@@ -55,7 +55,7 @@ const Cart = () => {
 
   if (cart.length === 0) {
     return (
-      <div className="bg-[#faf7ef] min-h-screen text-[#26392c] w-full px-4 sm:px-8 lg:px-[72px] pt-12 pb-24 text-center">
+      <div className="bg-[#faf7ef] min-h-screen text-[#26392c] w-full px-4 sm:px-8 lg:px-18 pt-12 pb-24 text-center">
         <div className="max-w-md mx-auto bg-[#fffefa] border border-[#dedccf] rounded-2xl p-10 space-y-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
           <p className="font-serif font-bold text-[32px] text-[#22382a]">Giỏ hàng đang trống.</p>
           <p className="text-[14px] text-[#6b7264]">
@@ -74,7 +74,7 @@ const Cart = () => {
 
   return (
     <div className="bg-[#faf7ef] min-h-screen text-[#26392c]">
-      <div className="w-full px-4 sm:px-8 lg:px-[72px] pt-7 pb-24">
+      <div className="w-full px-4 sm:px-8 lg:px-18 pt-7 pb-24">
         
         {/* Breadcrumb */}
         <nav className="text-[12px] text-[#75796c] mb-6 flex items-center gap-2">

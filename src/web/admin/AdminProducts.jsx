@@ -1,5 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { PRODUCTS, CATEGORIES } from '../../data/mockData';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../../redux/product/ProductApi';
+import { fetchCategories } from '../../redux/category/CategoryApi';
+import { useCart } from '../../context/CartContext';
 import {
   Card,
   FieldLabel,
@@ -29,12 +32,38 @@ const blank = {
 };
 
 const AdminProducts = () => {
-  const cats = CATEGORIES.filter((c) => c.id !== 'all' && c.id !== 'combo');
-  const [list, setList] = useState(PRODUCTS.map((p) => ({ ...p })));
+  const dispatch = useDispatch();
+  const { showToast } = useCart();
+  const list = useSelector((state) => state.products.items);
+  const rawCats = useSelector((state) => state.categories.items);
+
+  const cats = useMemo(() => {
+    if (rawCats.length > 0) {
+      return rawCats.filter((c) => (c.slug || c.id) !== 'all' && (c.slug || c.id) !== 'combo');
+    }
+    return [
+      { id: 'nem-truyen-thong', name: 'Nem truyền thống' },
+      { id: 'nem-huong-la', name: 'Nem hương lá' },
+      { id: 'nem-coi-ran', name: 'Nem cối & nem rán' },
+    ];
+  }, [rawCats]);
+
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(PRODUCTS[0]?.id);
-  const [form, setForm] = useState({ ...PRODUCTS[0] });
+  const [selectedId, setSelectedId] = useState('');
+  const [form, setForm] = useState(blank);
   const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (list.length > 0 && !selectedId && !creating) {
+      setSelectedId(list[0].id || list[0]._id);
+      setForm({ ...list[0] });
+    }
+  }, [list, selectedId, creating]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -46,7 +75,7 @@ const AdminProducts = () => {
 
   const selectProduct = (p) => {
     setCreating(false);
-    setSelectedId(p.id);
+    setSelectedId(p.id || p._id);
     setForm({ ...p });
   };
 
@@ -58,24 +87,63 @@ const AdminProducts = () => {
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const save = () => {
-    if (!form.name || !form.price) return;
-    if (creating) {
-      const item = {
-        ...form,
-        id: `nem-${Date.now().toString().slice(-4)}`,
-        sku: form.sku || 'NN-NEW',
-        price: Number(form.price),
-        stock: Number(form.stock) || 0,
-        categoryName: cats.find((c) => c.id === form.category)?.name,
-      };
-      setList((prev) => [item, ...prev]);
-      setCreating(false);
-      setSelectedId(item.id);
-      setForm(item);
+  const save = async () => {
+    if (!form.name || !form.price) {
+      showToast('Vui lòng nhập tên và giá sản phẩm!');
       return;
     }
-    setList((prev) => prev.map((p) => (p.id === selectedId ? { ...p, ...form, price: Number(form.price), stock: Number(form.stock) || 0 } : p)));
+
+    if (creating) {
+      const slug = `nem-${Date.now().toString().slice(-4)}`;
+      const item = {
+        ...form,
+        slug,
+        sku: form.sku || `NN-${Date.now().toString().slice(-3)}`,
+        price: Number(form.price),
+        stock: Number(form.stock) || 0,
+        categoryName: cats.find((c) => (c.slug || c.id) === form.category)?.name || 'Nem truyền thống',
+      };
+
+      const res = await dispatch(createProduct(item));
+      if (createProduct.fulfilled.match(res)) {
+        showToast(`Đã thêm sản phẩm "${item.name}"!`);
+        setCreating(false);
+        setSelectedId(res.payload.id || res.payload._id);
+        setForm(res.payload);
+      } else {
+        showToast('Lỗi khi thêm sản phẩm!');
+      }
+      return;
+    }
+
+    const updated = {
+      ...form,
+      price: Number(form.price),
+      stock: Number(form.stock) || 0,
+    };
+
+    const targetId = form.slug || form.id || form._id || selectedId;
+    const res = await dispatch(updateProduct({ id: targetId, data: updated }));
+    if (updateProduct.fulfilled.match(res)) {
+      showToast(`Đã cập nhật sản phẩm "${form.name}"!`);
+    } else {
+      showToast('Lỗi khi cập nhật sản phẩm!');
+    }
+  };
+
+  const handleDelete = async (idOrSlug) => {
+    if (window.confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+      const res = await dispatch(deleteProduct(idOrSlug));
+      if (deleteProduct.fulfilled.match(res)) {
+        showToast('Đã xóa sản phẩm thành công!');
+        if (list.length > 1) {
+          const next = list.find((p) => (p.slug || p.id || p._id) !== idOrSlug);
+          if (next) selectProduct(next);
+        } else {
+          startCreate();
+        }
+      }
+    }
   };
 
   return (
@@ -97,11 +165,12 @@ const AdminProducts = () => {
             </div>
             <div className="divide-y divide-nep-line">
               {filtered.map((p) => {
-                const active = !creating && p.id === selectedId;
+                const pId = p.id || p._id || p.slug;
+                const active = !creating && pId === selectedId;
                 return (
                   <button
                     type="button"
-                    key={p.id}
+                    key={pId}
                     onClick={() => selectProduct(p)}
                     className={`w-full text-left px-5 py-4 flex items-center gap-4 ${active ? 'bg-[#eef3e8]' : 'hover:bg-nep-cream'}`}
                   >
@@ -126,7 +195,7 @@ const AdminProducts = () => {
           <Card className="p-5">
             <p className="font-medium text-[14px] text-nep-ink">Quy tắc tùy chọn gia vị</p>
             <p className="mt-2 text-[13px] text-nep-muted">
-              Tất cả 4 sản phẩm đều có Tỏi, Ớt và Đinh lăng. Mỗi loại chỉ có hai mức: Ít / Nhiều; không tự thêm mức khác.
+              Tất cả các sản phẩm đều có Tỏi, Ớt và Đinh lăng. Mỗi loại chỉ có hai mức: Ít / Nhiều; không tự thêm mức khác.
             </p>
             <p className="mt-2 text-[12px] text-nep-muted">
               Với nem chua rán, phần gia vị tùy chọn được đóng kèm riêng. Khách cần làm chín nem trước khi dùng.
@@ -135,9 +204,20 @@ const AdminProducts = () => {
         </div>
 
         <Card className="p-5 h-fit">
-          <p className="font-medium text-[15px] text-nep-ink mb-4">
-            {creating ? 'Thêm sản phẩm mới' : `Chỉnh sửa · ${form.name || 'Sản phẩm'}`}
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-medium text-[15px] text-nep-ink">
+              {creating ? 'Thêm sản phẩm mới' : `Chỉnh sửa · ${form.name || 'Sản phẩm'}`}
+            </p>
+            {!creating && (
+              <button
+                type="button"
+                onClick={() => handleDelete(form.slug || form.id || form._id)}
+                className="text-[12px] text-nep-rose hover:underline font-medium"
+              >
+                Xóa món
+              </button>
+            )}
+          </div>
           {!creating && (
             <div className="mb-4">
               <span className="inline-flex items-center rounded-full bg-nep-mint text-nep-green text-[11px] px-2.5 py-1">Đang bán</span>
@@ -164,7 +244,7 @@ const AdminProducts = () => {
               <FieldLabel required>Danh mục</FieldLabel>
               <Select value={form.category} onChange={(e) => setField('category', e.target.value)}>
                 {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.slug || c.id} value={c.slug || c.id}>
                     {c.name}
                   </option>
                 ))}
@@ -210,7 +290,7 @@ const AdminProducts = () => {
               </p>
             </div>
             <div className="flex gap-2 pt-2">
-              <GhostButton className="flex-1" onClick={() => (creating ? startCreate() : selectProduct(list.find((p) => p.id === selectedId) || list[0]))}>
+              <GhostButton className="flex-1" onClick={() => (creating ? startCreate() : selectProduct(list.find((p) => (p.slug || p.id || p._id) === selectedId) || list[0]))}>
                 Hủy
               </GhostButton>
               <PrimaryButton className="flex-1" onClick={save}>

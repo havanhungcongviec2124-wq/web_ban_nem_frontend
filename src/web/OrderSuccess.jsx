@@ -20,7 +20,7 @@ const OrderSuccess = () => {
   }
 
   return (
-    <div className="bg-nep-cream pb-16 pt-9 px-4 sm:px-8 lg:px-[72px]">
+    <div className="bg-nep-cream pb-16 pt-9 px-4 sm:px-8 lg:px-18">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="space-y-3">
           <Eyebrow>Nếp đã nhận đơn</Eyebrow>

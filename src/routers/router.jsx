@@ -10,6 +10,8 @@ import OrderSuccess from "../web/OrderSuccess";
 import About from "../web/About";
 import News from "../web/News";
 import Contact from "../web/Contact";
+import Login from "../web/Login";
+import Register from "../web/Register";
 import AdminLayout from "../web/admin/AdminLayout";
 import AdminDashboard from "../web/admin/AdminDashboard";
 import AdminOrders from "../web/admin/AdminOrders";
@@ -75,6 +77,14 @@ const router = createHashRouter([
       {
         path: "contact",
         element: <Contact />,
+      },
+      {
+        path: "login",
+        element: <Login />,
+      },
+      {
+        path: "register",
+        element: <Register />,
       },
       {
         path: "admin",

@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getStoredCombos } from '../data/mockData';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchCombos } from '../redux/combo/ComboApi';
 
 const formatVnd = (amount) => {
   return amount ? `${amount.toLocaleString('vi-VN')} đ` : '0 đ';
 };
 
 const Combos = () => {
-  const [combosList, setCombosList] = useState(getStoredCombos);
+  const dispatch = useDispatch();
+  const combosList = useSelector((state) => state.combos.items);
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setCombosList(getStoredCombos());
-    };
-    window.addEventListener('nep_combos_updated', handleUpdate);
-    return () => window.removeEventListener('nep_combos_updated', handleUpdate);
-  }, []);
+    dispatch(fetchCombos());
+  }, [dispatch]);
+
   return (
     <div className="bg-[#faf7ef] min-h-screen text-[#26392c]">
       <div className="w-full px-4 sm:px-8 lg:px-[72px] pt-7 pb-20 space-y-9">
@@ -32,7 +31,7 @@ const Combos = () => {
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#ad3c32]">
             THÊM NGƯỜI, THÊM NGON
           </p>
-          <h1 className="font-serif font-bold text-[36px] sm:text-[46px] leading-[1.25] tracking-[-0.6px] text-[#22382a]">
+          <h1 className="font-serif font-bold text-[36px] sm:text-[46px] leading-tight tracking-[-0.6px] text-[#22382a]">
             Chọn một combo. Đủ một bàn vui.
           </h1>
           <p className="text-[14px] leading-[1.65] text-[#6b7264] max-w-2xl">
@@ -44,13 +43,13 @@ const Combos = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {combosList.filter((c) => c.status !== 'Tạm ẩn').map((combo) => (
             <div 
-              key={combo.id} 
+              key={combo.id || combo._id} 
               className="bg-[#fffefa] border border-[#dedccf] rounded-[20px] p-6 sm:p-8 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:border-[#b8c9ba] transition-all group"
             >
               <div className="space-y-5">
                 {/* Image */}
-                <div className="overflow-hidden rounded-[16px] aspect-16/10 w-full bg-[#f4f1e8]">
-                  <Link to={`/product/${combo.id}`}>
+                <div className="overflow-hidden rounded-2xl aspect-16/10 w-full bg-[#f4f1e8]">
+                  <Link to={`/product/${combo.slug || combo.id}`}>
                     <img 
                       src={combo.image} 
                       alt={combo.name} 
@@ -69,7 +68,7 @@ const Combos = () => {
                 {/* Title */}
                 <div>
                   <h2 className="font-serif font-bold text-[28px] sm:text-[32px] tracking-[-0.6px] text-[#22382a] group-hover:text-[#ad3c32] transition-colors leading-tight">
-                    <Link to={`/product/${combo.id}`}>
+                    <Link to={`/product/${combo.slug || combo.id}`}>
                       {combo.name}
                     </Link>
                   </h2>
@@ -112,7 +111,7 @@ const Combos = () => {
               {/* Action Button */}
               <div className="pt-6 mt-6 border-t border-[#ede9dc]">
                 <Link
-                  to={`/product/${combo.id}`}
+                  to={`/product/${combo.slug || combo.id}`}
                   className="w-full py-3.5 px-4 rounded-xl border border-[#31583b] bg-white hover:bg-[#31583b] text-[#31583b] hover:text-white text-[14px] font-semibold flex items-center justify-center gap-2 transition-all shadow-2xs"
                 >
                   <span>Chọn gia vị cho từng món & đặt combo</span>

@@ -1,23 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PRODUCTS, COMBOS, FAQS } from '../data/mockData';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProducts } from '../redux/product/ProductApi';
+import { fetchCombos } from '../redux/combo/ComboApi';
+import { fetchCategories } from '../redux/category/CategoryApi';
+import { FAQS } from '../data/mockData';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { Eyebrow, formatVnd, SpiceChoice } from '../components/NepUI';
 
 const Home = () => {
+  const dispatch = useDispatch();
   const { openSpiceModal } = useCart();
-  const featured = PRODUCTS.slice(0, 4);
-  const sample = PRODUCTS[0];
-  const [demoSpices, setDemoSpices] = useState(sample.defaultSpices);
+  const productList = useSelector((state) => state.products.items);
+  const comboList = useSelector((state) => state.combos.items);
+  const categoryList = useSelector((state) => state.categories.items);
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+    dispatch(fetchCombos());
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  const featured = productList.slice(0, 4);
+  const sample = productList[0] || {
+    id: 'nem-chua-truyen-thong',
+    name: 'Nem chua truyền thống',
+    defaultSpices: { garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' },
+  };
+
+  const [demoSpices, setDemoSpices] = useState({ garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' });
   const [openFaq, setOpenFaq] = useState(0);
 
-  const categories = [
-    { name: 'Nem truyền thống', to: '/products?category=nem-truyen-thong', active: true },
-    { name: 'Nem hương lá', to: '/products?category=nem-huong-la' },
-    { name: 'Nem cối & nem rán', to: '/products?category=nem-coi-ran' },
-    { name: 'Combo & quà tặng', to: '/combos' },
-  ];
+  const displayCategories = categoryList.length > 0
+    ? categoryList.map((cat, idx) => ({
+        name: cat.name,
+        to: `/products?category=${cat.slug || cat.id}`,
+        active: idx === 0,
+      }))
+    : [
+        { name: 'Nem truyền thống', to: '/products?category=nem-truyen-thong', active: true },
+        { name: 'Nem hương lá', to: '/products?category=nem-huong-la' },
+        { name: 'Nem cối & nem rán', to: '/products?category=nem-coi-ran' },
+        { name: 'Combo & quà tặng', to: '/combos' },
+      ];
 
   return (
     <div className="bg-nep-cream text-nep-ink">
@@ -84,7 +110,7 @@ const Home = () => {
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {categories.map((cat) => (
+            {displayCategories.map((cat) => (
               <Link
                 key={cat.name}
                 to={cat.to}
@@ -115,7 +141,7 @@ const Home = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {featured.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id || p._id} product={p} />
             ))}
           </div>
         </div>
@@ -131,23 +157,25 @@ const Home = () => {
             </p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {COMBOS.map((combo) => (
-              <div key={combo.id} className="bg-nep-paper border border-nep-line rounded-xl p-6 flex flex-col gap-[18px]">
+            {comboList.map((combo) => (
+              <div key={combo.id || combo._id} className="bg-nep-paper border border-nep-line rounded-xl p-6 flex flex-col gap-[18px]">
                 <img src={combo.image} alt={combo.name} className="w-full h-[310px] object-cover rounded-xl" />
                 <span className="self-start bg-nep-blush text-nep-rose text-[11px] font-medium px-2.5 py-1 rounded-full">
-                  {combo.badge}
+                  {combo.badge || 'Combo sum vầy'}
                 </span>
                 <h3 className="font-serif font-semibold text-[28px] tracking-[-0.6px] leading-[1.3]">
-                  <Link to={`/product/${combo.id}`}>{combo.name}</Link>
+                  <Link to={`/product/${combo.id || combo.slug}`}>{combo.name}</Link>
                 </h3>
                 <p className="text-[12px] leading-[1.6] text-nep-muted">{combo.pack}</p>
-                <p className="text-[13px] leading-[1.6]">{combo.shortDesc}</p>
+                <p className="text-[13px] leading-[1.6]">{combo.shortDesc || combo.description}</p>
                 <div className="flex items-center gap-3">
                   <span className="text-[24px] font-semibold text-nep-rose">{formatVnd(combo.price)}</span>
-                  <span className="text-[13px] text-nep-muted line-through">{formatVnd(combo.originalPrice)}</span>
+                  {combo.originalPrice && (
+                    <span className="text-[13px] text-nep-muted line-through">{formatVnd(combo.originalPrice)}</span>
+                  )}
                 </div>
                 <Link
-                  to={`/product/${combo.id}`}
+                  to={`/product/${combo.id || combo.slug}`}
                   className="w-full min-h-12 rounded-lg border border-nep-line bg-nep-paper text-nep-green text-[14px] font-semibold flex items-center justify-center"
                 >
                   Chọn gia vị & thêm combo →

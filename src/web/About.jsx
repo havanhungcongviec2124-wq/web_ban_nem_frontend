@@ -5,9 +5,9 @@ import { Eyebrow } from '../components/NepUI';
 const About = () => {
   return (
     <div className="bg-nep-cream">
-      <section className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-center p-4 sm:p-8 lg:p-[72px]">
+      <section className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-center p-4 sm:p-8 lg:p-18">
         <div className="flex-1 w-full">
-          <img src="/assets/story.png" alt="Nếp gói thủ công" className="w-full h-[280px] sm:h-[440px] object-cover rounded-xl" />
+          <img src="/assets/story.png" alt="Nếp gói thủ công" className="w-full h-70 sm:h-110 object-cover rounded-xl" />
         </div>
         <div className="flex-1 space-y-5">
           <Eyebrow>Chuyện nhà Nếp</Eyebrow>
@@ -23,7 +23,7 @@ const About = () => {
         </div>
       </section>
 
-      <section className="bg-nep-mint px-4 sm:px-8 lg:px-[72px] py-16 space-y-8">
+      <section className="bg-nep-mint px-4 sm:px-8 lg:px-18 py-16 space-y-8">
         <div className="space-y-2.5">
           <Eyebrow>Ba điều Nếp giữ</Eyebrow>
           <h2 className="font-serif font-semibold text-[32px] sm:text-[36px] leading-[1.3] tracking-[-0.6px]">
@@ -45,11 +45,11 @@ const About = () => {
         </div>
       </section>
 
-      <section className="px-4 sm:px-8 lg:px-[72px] py-16 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+      <section className="px-4 sm:px-8 lg:px-18 py-16 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
         <p className="font-serif font-semibold text-[28px] leading-[1.3]">Muốn ngồi lại bên một gói nem?</p>
         <Link
           to="/products"
-          className="inline-flex items-center justify-center min-h-12 px-[22px] rounded-lg bg-nep-rose text-white text-[14px] font-semibold"
+          className="inline-flex items-center justify-center min-h-12 px-5.5 rounded-lg bg-nep-rose text-white text-[14px] font-semibold"
         >
           Chọn món ngon →
         </Link>

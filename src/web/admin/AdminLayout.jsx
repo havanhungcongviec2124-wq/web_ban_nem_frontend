@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import {
   IconGrid,
   IconBox,
@@ -32,7 +34,26 @@ const weekdayVi = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ 
 
 const AdminLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { showToast } = useCart();
   const [open, setOpen] = useState(false);
+
+  const handleAdminLogout = () => {
+    logout();
+    showToast('Đã đăng xuất khỏi tài khoản Quản trị!');
+    navigate('/login');
+  };
+
+  const displayName = user?.name || 'Quản trị viên';
+  const displayRole = user?.role === 'admin' ? 'Quản trị hệ thống' : 'Tài khoản người dùng';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(-2)
+    .join('')
+    .toUpperCase() || 'AD';
 
   const crumb = useMemo(() => {
     if (location.pathname.startsWith('/admin/orders/')) return 'Đơn hàng';
@@ -67,21 +88,32 @@ const AdminLayout = () => {
       </nav>
       <div className="px-4 py-5 mt-auto border-t border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#3d6550] text-[11px] font-semibold flex items-center justify-center">
-            AN
+          <div className="w-9 h-9 rounded-full bg-[#3d6550] text-[11px] font-semibold flex items-center justify-center shrink-0">
+            {initials}
           </div>
-          <div className="min-w-0">
-            <p className="text-[13px] font-medium leading-tight">An Nguyễn</p>
-            <p className="text-[11px] text-nep-cream/55 mt-0.5">Quản trị cửa hàng</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium leading-tight truncate">{displayName}</p>
+            <p className="text-[11px] text-nep-cream/55 mt-0.5 truncate">{displayRole}</p>
           </div>
         </div>
-        <Link to="/home" className="mt-4 flex items-center gap-2 text-[12px] text-nep-cream/70 hover:text-white">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-            <path d="M9 22V12h6v10" />
-          </svg>
-          Xem cửa hàng
-        </Link>
+
+        <div className="mt-4 flex items-center justify-between text-[12px] pt-2 border-t border-white/5">
+          <Link to="/home" className="flex items-center gap-1.5 text-nep-cream/70 hover:text-white transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <path d="M9 22V12h6v10" />
+            </svg>
+            Xem cửa hàng
+          </Link>
+
+          <button
+            type="button"
+            onClick={handleAdminLogout}
+            className="text-nep-rose hover:underline transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            Đăng xuất
+          </button>
+        </div>
       </div>
     </aside>
   );

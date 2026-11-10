@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Foodter from './components/Foodter';
 import { Outlet, useLocation } from 'react-router-dom';
 import { CartProvider, useCart } from './context/CartContext';
+import { AuthProvider } from './context/AuthContext';
 import SpiceModal from './components/SpiceModal';
 import { IconCheck } from './components/Icons';
 
@@ -51,9 +52,11 @@ const MainLayout = () => {
 
 const App = () => {
   return (
-    <CartProvider>
-      <MainLayout />
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <MainLayout />
+      </CartProvider>
+    </AuthProvider>
   );
 };
 

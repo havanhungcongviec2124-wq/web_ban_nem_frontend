@@ -13,7 +13,7 @@ const Contact = () => {
   };
 
   return (
-    <div className="bg-nep-cream pb-16 pt-9 px-4 sm:px-8 lg:px-[72px] space-y-10">
+    <div className="bg-nep-cream pb-16 pt-9 px-4 sm:px-8 lg:px-18 space-y-10">
       <div className="space-y-3 max-w-2xl">
         <Eyebrow>Nếp luôn lắng nghe</Eyebrow>
         <h1 className="font-serif font-semibold text-[36px] sm:text-[48px] leading-[1.3] tracking-[-0.6px]">
@@ -78,7 +78,7 @@ const Contact = () => {
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   className="w-full px-3.5 py-3 rounded-lg border border-nep-line bg-nep-cream text-[13px] outline-none"
                 />
-                <button type="submit" className="min-h-12 px-[22px] rounded-lg bg-nep-rose text-white text-[14px] font-semibold">
+                <button type="submit" className="min-h-12 px-5.5 rounded-lg bg-nep-rose text-white text-[14px] font-semibold">
                   Gửi cho Nếp →
                 </button>
               </form>

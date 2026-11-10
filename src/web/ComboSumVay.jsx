@@ -1,30 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchComboById } from '../redux/combo/ComboApi';
 import { useCart } from '../context/CartContext';
-import { COMBOS } from '../data/mockData';
 
 const formatVnd = (amount) => {
   return amount ? `${amount.toLocaleString('vi-VN')} đ` : '0 đ';
 };
 
 const ComboSumVay = () => {
+  const dispatch = useDispatch();
   const { addToCart } = useCart();
+  const selectedCombo = useSelector((state) => state.combos.selectedCombo);
+  const combos = useSelector((state) => state.combos.items);
 
-  // Find combo data
-  const combo = COMBOS.find((c) => c.id === 'combo-sum-vay') || COMBOS[0];
+  useEffect(() => {
+    dispatch(fetchComboById('combo-sum-vay'));
+  }, [dispatch]);
 
-  // Quantity of combo
+  const combo =
+    (selectedCombo && selectedCombo.slug === 'combo-sum-vay' ? selectedCombo : null) ||
+    combos.find((c) => c.slug === 'combo-sum-vay' || c.id === 'combo-sum-vay') || {
+      id: 'combo-sum-vay',
+      slug: 'combo-sum-vay',
+      name: 'Combo Sum vầy',
+      badge: 'Combo bán chạy · Dành cho 4 – 6 người',
+      pack: '30 chiếc · 600 g / combo',
+      price: 235000,
+      originalPrice: 265000,
+      image: '/assets/combo-sum-vay.png',
+      shortDesc: 'Hai vị nem, một bàn chuyện trò. Đủ đầy cho bữa gặp gỡ gia đình hoặc buổi hẹn bạn bè cuối tuần.',
+    };
+
   const [quantity, setQuantity] = useState(1);
 
-  // Spices for each item inside combo, initialized exactly to the Figma design:
-  // Card 1 (Nem truyền thống): Tỏi: Ít, Ớt: Ít, Đinh lăng: Nhiều
   const [spicesTrad, setSpicesTrad] = useState({
     garlic: 'Ít',
     chili: 'Ít',
     polyscias: 'Nhiều',
   });
 
-  // Card 2 (Nem lá ổi): Tỏi: Nhiều, Ớt: Nhiều, Đinh lăng: Ít
   const [spicesLeaf, setSpicesLeaf] = useState({
     garlic: 'Nhiều',
     chili: 'Nhiều',
@@ -56,8 +71,8 @@ const ComboSumVay = () => {
           <div className="lg:col-span-6">
             <div className="overflow-hidden rounded-[20px] bg-[#fffefa] border border-[#dedccf] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
               <img
-                src="/assets/combo-sum-vay.png"
-                alt="Combo Sum vầy"
+                src={combo.image || '/assets/combo-sum-vay.png'}
+                alt={combo.name}
                 className="w-full h-auto aspect-4/3 sm:aspect-[4/3] object-cover"
               />
             </div>
@@ -69,28 +84,30 @@ const ComboSumVay = () => {
               {/* Badge */}
               <div className="mb-3">
                 <span className="inline-block bg-[#faebe8] text-[#ad3c32] text-[11px] font-medium px-3.5 py-1 rounded-full">
-                  Combo bán chạy · Dành cho 4 – 6 người
+                  {combo.badge || 'Combo bán chạy · Dành cho 4 – 6 người'}
                 </span>
               </div>
 
               {/* Title */}
               <h1 className="font-serif font-bold text-[38px] sm:text-[46px] text-[#22382a] leading-[1.2] tracking-[-0.8px] mb-3">
-                Combo Sum vầy
+                {combo.name}
               </h1>
 
               {/* Short Desc */}
               <p className="text-[13px] sm:text-[14px] leading-[1.65] text-[#6b7264] mb-5 max-w-xl">
-                Hai vị nem, một bàn chuyện trò. Đủ đầy cho bữa gặp gỡ gia đình hoặc buổi hẹn bạn bè cuối tuần.
+                {combo.shortDesc || combo.description}
               </p>
 
               {/* Price Row */}
               <div className="flex items-baseline gap-3 mb-2.5">
                 <span className="font-bold text-[30px] sm:text-[34px] text-[#ad3c32] leading-none tracking-tight">
-                  235.000 đ
+                  {formatVnd(combo.price)}
                 </span>
-                <span className="text-[15px] text-[#9a9e94] line-through font-normal">
-                  265.000 đ
-                </span>
+                {combo.originalPrice && (
+                  <span className="text-[15px] text-[#9a9e94] line-through font-normal">
+                    {formatVnd(combo.originalPrice)}
+                  </span>
+                )}
               </div>
 
               {/* Discount pill */}
@@ -423,7 +440,7 @@ const ComboSumVay = () => {
               onClick={handleAddToCart}
               className="bg-[#ad3c32] hover:bg-[#962f26] text-white font-medium text-[14px] px-6 py-3 rounded-lg shadow-xs transition-all whitespace-nowrap active:scale-[0.99]"
             >
-              Thêm combo · {formatVnd(combo.price * quantity)}
+              Thêm combo · {formatVnd((combo.price || 235000) * quantity)}
             </button>
           </div>
         </div>

@@ -1,5 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { COMBOS, PRODUCTS } from '../../data/mockData';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchCombos, updateCombo, createCombo, deleteCombo } from '../../redux/combo/ComboApi';
+import { fetchProducts } from '../../redux/product/ProductApi';
+import { useCart } from '../../context/CartContext';
 import {
   Card,
   FieldLabel,
@@ -11,16 +14,43 @@ import {
   formatVnd,
 } from './adminUi';
 
-const cloneCombos = () => COMBOS.map((c) => ({
-  ...c,
-  comboItems: (c.comboItems || []).map((i) => ({ ...i })),
-}));
-
 const AdminCombos = () => {
-  const [list, setList] = useState(cloneCombos);
+  const dispatch = useDispatch();
+  const { showToast } = useCart();
+  const list = useSelector((state) => state.combos.items);
+  const products = useSelector((state) => state.products.items);
+
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(COMBOS[0]?.id);
-  const selected = list.find((c) => c.id === selectedId) || list[0];
+  const [selectedId, setSelectedId] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchCombos());
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (list.length > 0 && !selectedId) {
+      setSelectedId(list[0].slug || list[0].id || list[0]._id);
+    }
+  }, [list, selectedId]);
+
+  // Form state cho combo mới
+  const [newCombo, setNewCombo] = useState({
+    name: '',
+    sku: '',
+    price: 250000,
+    originalPrice: 280000,
+    image: '/assets/combo-sum-vay.png',
+    shortDesc: 'Sự kết hợp tinh túy của các món nem chua đặc sản xứ Thanh.',
+    badge: 'Mới ra mắt',
+    status: 'Đang bán',
+    comboItems: [],
+  });
+
+  const selected = useMemo(() => {
+    return list.find((c) => (c.slug || c.id || c._id) === selectedId) || list[0] || null;
+  }, [list, selectedId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -29,37 +59,107 @@ const AdminCombos = () => {
   }, [list, query]);
 
   const retail = (selected?.comboItems || []).reduce((sum, item) => {
-    const product = PRODUCTS.find((p) => p.id === item.id);
-    return sum + (product?.price || 0) * (item.qty || 1);
+    const product = products.find((p) => (p.slug || p.id || p._id) === (item.productSlug || item.id));
+    return sum + (product?.price || 85000) * (item.qty || 1);
   }, 0);
   const saveAmt = Math.max(0, retail - (selected?.price || 0));
 
-  const patch = (partial) => {
-    setList((prev) => prev.map((c) => (c.id === selected.id ? { ...c, ...partial } : c)));
+  const [editState, setEditState] = useState(null);
+
+  useEffect(() => {
+    if (selected) {
+      setEditState(JSON.parse(JSON.stringify(selected)));
+    }
+  }, [selected]);
+
+  const patchEdit = (partial) => {
+    setEditState((prev) => ({ ...prev, ...partial }));
   };
 
-  const patchItem = (index, partial) => {
-    const comboItems = selected.comboItems.map((item, i) => (i === index ? { ...item, ...partial } : item));
-    patch({ comboItems });
+  const patchEditItem = (index, partial) => {
+    if (!editState) return;
+    const items = (editState.comboItems || []).map((item, i) =>
+      i === index ? { ...item, ...partial } : item
+    );
+    patchEdit({ comboItems: items });
   };
 
-  const addProduct = (id) => {
-    const product = PRODUCTS.find((p) => p.id === id);
-    if (!product) return;
-    if (selected.comboItems.some((i) => i.id === id)) return;
-    patch({
+  const addProductToEdit = (prodId) => {
+    if (!editState) return;
+    const p = products.find((prod) => (prod.slug || prod.id || prod._id) === prodId);
+    if (!p) return;
+    if ((editState.comboItems || []).some((i) => (i.productSlug || i.id) === (p.slug || p.id))) return;
+    patchEdit({
       comboItems: [
-        ...selected.comboItems,
+        ...(editState.comboItems || []),
         {
-          id: product.id,
-          name: product.name,
+          productSlug: p.slug || p.id,
+          name: p.name,
           qty: 1,
-          image: product.image,
-          defaultSpices: product.defaultSpices,
+          qtyLabel: '1 gói',
+          image: p.image,
+          defaultSpices: p.defaultSpices,
         },
       ],
     });
   };
+
+  const handleSaveConfig = async () => {
+    if (!editState) return;
+    const targetId = editState.slug || editState.id || editState._id;
+    const res = await dispatch(updateCombo({ id: targetId, data: editState }));
+    if (updateCombo.fulfilled.match(res)) {
+      showToast(`Đã lưu cấu hình combo "${editState.name}"!`);
+    } else {
+      showToast('Lỗi khi cập nhật combo!');
+    }
+  };
+
+  const handleCreateCombo = async (e) => {
+    e.preventDefault();
+    if (!newCombo.name.trim()) {
+      alert('Vui lòng nhập tên combo!');
+      return;
+    }
+    const createdSlug = `combo-${Date.now()}`;
+    const comboToAdd = {
+      ...newCombo,
+      slug: createdSlug,
+      sku: newCombo.sku || `CB-${Math.floor(1000 + Math.random() * 9000)}`,
+      price: Number(newCombo.price) || 200000,
+      originalPrice: Number(newCombo.originalPrice) || Number(newCombo.price) + 30000,
+    };
+
+    const res = await dispatch(createCombo(comboToAdd));
+    if (createCombo.fulfilled.match(res)) {
+      showToast(`Đã tạo thành công combo "${comboToAdd.name}"!`);
+      setSelectedId(res.payload.slug || res.payload.id || res.payload._id);
+      setShowCreateModal(false);
+    } else {
+      showToast('Lỗi khi tạo combo!');
+    }
+  };
+
+  const handleDeleteCombo = async (id, name) => {
+    if (list.length <= 1) {
+      alert('Phải giữ lại ít nhất 1 combo trong hệ thống!');
+      return;
+    }
+    if (window.confirm(`Bạn có chắc chắn muốn xóa combo "${name}"?`)) {
+      const res = await dispatch(deleteCombo(id));
+      if (deleteCombo.fulfilled.match(res)) {
+        showToast(`Đã xóa combo "${name}"!`);
+        const remaining = list.filter((c) => (c.slug || c.id || c._id) !== id);
+        if (remaining.length > 0) {
+          setSelectedId(remaining[0].slug || remaining[0].id || remaining[0]._id);
+        }
+      } else {
+        showToast('Lỗi khi xóa combo!');
+      }
+    }
+  };
+
+  const currentDisplay = editState || selected;
 
   return (
     <div>
@@ -70,30 +170,52 @@ const AdminCombos = () => {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <SearchInput value={query} onChange={setQuery} placeholder="Tìm tên hoặc mã combo..." />
-        <PrimaryButton className="shrink-0">+ Tạo combo</PrimaryButton>
+        <PrimaryButton onClick={() => setShowCreateModal(true)} className="shrink-0 cursor-pointer">
+          + Tạo combo mới
+        </PrimaryButton>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-5">
         <div className="space-y-4">
           {filtered.map((c) => {
-            const active = c.id === selected?.id;
+            const cId = c.slug || c.id || c._id;
+            const active = cId === selectedId;
             return (
-              <Card key={c.id} className={`overflow-hidden ${active ? 'ring-1 ring-nep-green/30' : ''}`}>
-                <button type="button" className="w-full text-left" onClick={() => setSelectedId(c.id)}>
-                  <img src={c.image} alt="" className="w-full h-[220px] object-cover" />
+              <Card key={cId} className={`overflow-hidden transition-all ${active ? 'ring-2 ring-nep-green/60 shadow-md' : 'hover:shadow-sm'}`}>
+                <button type="button" className="w-full text-left" onClick={() => setSelectedId(cId)}>
+                  <img src={c.image} alt="" className="w-full h-52 object-cover" />
                 </button>
                 <div className="p-5">
-                  <p className="font-serif text-[20px] text-nep-ink">{c.name}</p>
-                  <span className="mt-2 inline-flex rounded-full bg-nep-mint text-nep-green text-[11px] px-2.5 py-1">
-                    {c.status || 'Đang bán'}
-                  </span>
-                  <p className="mt-3 text-[13px] text-nep-muted">{c.shortDesc}</p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-[18px] font-semibold text-nep-rose">{formatVnd(c.price)}</p>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-serif text-[20px] text-nep-ink">{c.name}</p>
+                      <span className="mt-1.5 inline-flex rounded-full bg-nep-mint text-nep-green text-[11px] px-2.5 py-0.5">
+                        {c.status || 'Đang bán'}
+                      </span>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setSelectedId(c.id)}
-                      className="text-[13px] text-nep-green"
+                      onClick={() => handleDeleteCombo(cId, c.name)}
+                      className="text-stone-400 hover:text-nep-rose text-[12px] p-1"
+                      title="Xóa combo này"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                  <p className="mt-2.5 text-[13px] text-nep-muted line-clamp-2">{c.shortDesc || c.description}</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[18px] font-semibold text-nep-rose">{formatVnd(c.price)}</p>
+                      {c.originalPrice > c.price && (
+                        <p className="text-[12px] text-nep-muted line-through">{formatVnd(c.originalPrice)}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(cId)}
+                      className={`text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                        active ? 'bg-nep-green text-white' : 'text-nep-green bg-[#eef3e8] hover:bg-nep-green hover:text-white'
+                      }`}
                     >
                       {active ? 'Đang chỉnh sửa' : 'Chỉnh sửa →'}
                     </button>
@@ -104,98 +226,179 @@ const AdminCombos = () => {
           })}
         </div>
 
-        {selected && (
-          <Card className="p-5 h-fit">
-            <p className="font-medium text-[15px] text-nep-ink mb-4">Chỉnh sửa · {selected.name}</p>
-            <div className="space-y-3">
+        {currentDisplay && (
+          <Card className="p-5 h-fit sticky top-24">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-nep-line">
+              <p className="font-medium text-[15px] text-nep-ink truncate">Chỉnh sửa · {currentDisplay.name}</p>
+              <span className="text-[11px] text-nep-muted bg-stone-100 px-2 py-0.5 rounded">
+                ID: {currentDisplay.slug || currentDisplay.id}
+              </span>
+            </div>
+            <div className="space-y-3.5">
               <div>
                 <FieldLabel required>Tên combo</FieldLabel>
-                <Input value={selected.name} onChange={(e) => patch({ name: e.target.value })} />
+                <Input value={currentDisplay.name} onChange={(e) => patchEdit({ name: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <FieldLabel>Mã combo</FieldLabel>
-                  <Input value={selected.sku || ''} onChange={(e) => patch({ sku: e.target.value })} />
+                  <FieldLabel>Mã combo (SKU)</FieldLabel>
+                  <Input value={currentDisplay.sku || ''} onChange={(e) => patchEdit({ sku: e.target.value })} />
                 </div>
                 <div>
                   <FieldLabel required>Giá combo (VNĐ)</FieldLabel>
-                  <Input type="number" value={selected.price} onChange={(e) => patch({ price: Number(e.target.value) })} />
+                  <Input type="number" value={currentDisplay.price} onChange={(e) => patchEdit({ price: Number(e.target.value) })} />
                 </div>
               </div>
+
               <div>
-                <FieldLabel>Danh mục</FieldLabel>
-                <Select value="combo" disabled>
-                  <option value="combo">Combo & quà tặng</option>
-                </Select>
+                <FieldLabel>Mô tả ngắn</FieldLabel>
+                <Input value={currentDisplay.shortDesc || ''} onChange={(e) => patchEdit({ shortDesc: e.target.value })} />
               </div>
 
               <div>
                 <p className="text-[13px] font-medium text-nep-ink mb-2">Thành phần & số lượng trong 1 combo</p>
-                <div className="space-y-3">
-                  {selected.comboItems.map((item, idx) => (
-                    <div key={`${item.id}-${idx}`} className="rounded-xl bg-[#eef3e8] p-3">
+                <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                  {(currentDisplay.comboItems || []).map((item, idx) => (
+                    <div key={`${item.id || item.productSlug}-${idx}`} className="rounded-xl bg-[#eef3e8] p-3">
                       <div className="flex items-start gap-3">
-                        <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                        <img src={item.image || '/assets/nem-truyen-thong.png'} alt="" className="w-12 h-12 rounded-lg object-cover" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-nep-green">{item.name}</p>
+                          <p className="text-[13px] font-medium text-nep-green truncate">{item.name}</p>
                           <p className="text-[11px] text-nep-muted mt-0.5">{item.qtyLabel || `${item.qty} gói`}</p>
                         </div>
                         <button
                           type="button"
-                          className="text-nep-muted hover:text-nep-rose"
-                          onClick={() => patch({ comboItems: selected.comboItems.filter((_, i) => i !== idx) })}
+                          className="text-stone-400 hover:text-nep-rose p-1 text-base leading-none"
+                          onClick={() => patchEdit({ comboItems: (currentDisplay.comboItems || []).filter((_, i) => i !== idx) })}
+                          title="Xóa món này khỏi combo"
                         >
                           ×
                         </button>
                       </div>
-                      <div className="mt-3 flex items-center justify-between">
+                      <div className="mt-2.5 flex items-center justify-between">
                         <span className="text-[12px] text-nep-muted">Số gói / combo</span>
-                        <div className="flex items-center gap-2 border border-nep-line rounded-lg bg-white h-9 px-2">
-                          <button type="button" onClick={() => patchItem(idx, { qty: Math.max(1, (item.qty || 1) - 1) })}>
+                        <div className="flex items-center gap-2 border border-nep-line rounded-lg bg-white h-8 px-2">
+                          <button type="button" className="px-1 font-bold text-nep-ink hover:text-nep-rose" onClick={() => patchEditItem(idx, { qty: Math.max(1, (item.qty || 1) - 1) })}>
                             −
                           </button>
                           <span className="w-5 text-center text-[13px]">{item.qty || 1}</span>
-                          <button type="button" onClick={() => patchItem(idx, { qty: (item.qty || 1) + 1 })}>
+                          <button type="button" className="px-1 font-bold text-nep-ink hover:text-nep-green" onClick={() => patchEditItem(idx, { qty: (item.qty || 1) + 1 })}>
                             +
                           </button>
                         </div>
                       </div>
-                      <p className="mt-2 text-[11px] text-nep-muted">
-                        Khách chọn riêng Tỏi, Ớt, Đinh lăng (Ít / Nhiều) cho món này.
-                      </p>
                     </div>
                   ))}
                 </div>
-                <Select className="mt-3" defaultValue="" onChange={(e) => { addProduct(e.target.value); e.target.value = ''; }}>
+                <Select className="mt-2.5" defaultValue="" onChange={(e) => { addProductToEdit(e.target.value); e.target.value = ''; }}>
                   <option value="" disabled>
                     + Thêm sản phẩm vào combo
                   </option>
-                  {PRODUCTS.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+                  {products.map((p) => (
+                    <option key={p.slug || p.id || p._id} value={p.slug || p.id || p._id}>
+                      {p.name} ({formatVnd(p.price)})
                     </option>
                   ))}
                 </Select>
               </div>
 
-              <div className="pt-2 space-y-1 text-[13px]">
+              <div className="pt-2 space-y-1 text-[13px] bg-stone-50 p-3 rounded-xl border border-stone-200">
                 <div className="flex justify-between">
                   <span className="text-nep-muted">Tổng giá mua lẻ</span>
-                  <span>{formatVnd(retail)}</span>
+                  <span className="font-medium">{formatVnd(retail)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-nep-muted">Khách tiết kiệm</span>
                   <span className="text-nep-rose font-medium">{formatVnd(saveAmt)}</span>
                 </div>
               </div>
-              <p className="text-[11px] text-nep-muted">
-                Thay đổi cấu hình chỉ áp dụng cho đơn mới. Đơn đã đặt giữ nguyên thành phần và gia vị.
-              </p>
-              <PrimaryButton className="w-full">Lưu cấu hình combo</PrimaryButton>
+
+              <PrimaryButton onClick={handleSaveConfig} className="w-full cursor-pointer py-2.5">
+                💾 Lưu cấu hình combo
+              </PrimaryButton>
             </div>
           </Card>
         )}
       </div>
+
+      {/* Modal Tạo combo mới */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-nep-line">
+              <h3 className="font-serif text-[20px] text-nep-ink">Tạo combo mới</h3>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="text-stone-400 hover:text-nep-ink text-xl font-bold leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCombo} className="mt-4 space-y-4">
+              <div>
+                <FieldLabel required>Tên combo</FieldLabel>
+                <Input
+                  required
+                  placeholder="Ví dụ: Combo Đoàn Viên"
+                  value={newCombo.name}
+                  onChange={(e) => setNewCombo({ ...newCombo, name: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <FieldLabel>Mã SKU</FieldLabel>
+                  <Input
+                    placeholder="CB-DV01"
+                    value={newCombo.sku}
+                    onChange={(e) => setNewCombo({ ...newCombo, sku: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <FieldLabel required>Giá bán (VNĐ)</FieldLabel>
+                  <Input
+                    type="number"
+                    required
+                    value={newCombo.price}
+                    onChange={(e) => setNewCombo({ ...newCombo, price: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <FieldLabel>Ảnh combo (URL hoặc asset)</FieldLabel>
+                <Input
+                  value={newCombo.image}
+                  onChange={(e) => setNewCombo({ ...newCombo, image: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <FieldLabel>Mô tả ngắn</FieldLabel>
+                <Input
+                  value={newCombo.shortDesc}
+                  onChange={(e) => setNewCombo({ ...newCombo, shortDesc: e.target.value })}
+                />
+              </div>
+
+              <div className="pt-3 border-t border-nep-line flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 rounded-xl border border-nep-line text-[13px] hover:bg-stone-50"
+                >
+                  Hủy bỏ
+                </button>
+                <PrimaryButton type="submit" className="cursor-pointer">
+                  Xác nhận tạo combo
+                </PrimaryButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

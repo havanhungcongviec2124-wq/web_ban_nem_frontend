@@ -1,10 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { PRODUCTS, COMBOS, CATEGORIES } from '../data/mockData';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProducts } from '../redux/product/ProductApi';
+import { fetchCombos } from '../redux/combo/ComboApi';
+import { fetchCategories } from '../redux/category/CategoryApi';
 import ProductCard from '../components/ProductCard';
 import { Eyebrow } from '../components/NepUI';
 
 const Products = () => {
+  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentCategory = searchParams.get('category') || 'all';
   const urlSearch = searchParams.get('search') || '';
@@ -12,7 +16,37 @@ const Products = () => {
   const [priceRange, setPriceRange] = useState('all');
   const [packFilter, setPackFilter] = useState('all');
 
-  const allItems = useMemo(() => [...PRODUCTS, ...COMBOS], []);
+  const products = useSelector((state) => state.products.items);
+  const combos = useSelector((state) => state.combos.items);
+  const categories = useSelector((state) => state.categories.items);
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+    dispatch(fetchCombos());
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  const allItems = useMemo(() => {
+    return [...products, ...combos];
+  }, [products, combos]);
+
+  const categoryList = useMemo(() => {
+    const defaultList = [
+      { id: 'all', name: 'Tất cả' },
+      { id: 'nem-truyen-thong', name: 'Nem truyền thống' },
+      { id: 'nem-huong-la', name: 'Nem hương lá' },
+      { id: 'nem-coi-ran', name: 'Nem cối & rán' },
+      { id: 'combo', name: 'Combo & quà tặng' },
+    ];
+    if (categories.length > 0) {
+      return [
+        { id: 'all', name: 'Tất cả' },
+        ...categories.map((c) => ({ id: c.slug || c.id, name: c.name })),
+        { id: 'combo', name: 'Combo & quà tặng' },
+      ];
+    }
+    return defaultList;
+  }, [categories]);
 
   const handleCategorySelect = (catId) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -47,7 +81,7 @@ const Products = () => {
   }, [allItems, currentCategory, urlSearch, priceRange, packFilter, sortBy]);
 
   return (
-    <div className="bg-nep-cream pb-16 pt-9 px-4 sm:px-8 lg:px-[72px] space-y-8">
+    <div className="bg-nep-cream pb-16 pt-9 px-4 sm:px-8 lg:px-18 space-y-8">
       <p className="text-[12px] text-nep-muted">
         <Link to="/home">Trang chủ</Link>
         {'  /  '}
@@ -65,9 +99,9 @@ const Products = () => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        <aside className="w-full lg:w-[210px] lg:pr-6 space-y-5 shrink-0">
+        <aside className="w-full lg:w-52.5 lg:pr-6 space-y-5 shrink-0">
           <p className="font-semibold text-[11px] tracking-[1.5px] uppercase text-nep-green">Danh mục</p>
-          {CATEGORIES.map((cat) => {
+          {categoryList.map((cat) => {
             const active = currentCategory === cat.id;
             const count = cat.id === 'all'
               ? allItems.length
@@ -152,7 +186,7 @@ const Products = () => {
           {filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-9">
               {filteredItems.map((item) => (
-                <ProductCard key={item.id} product={item} />
+                <ProductCard key={item.id || item._id} product={item} />
               ))}
             </div>
           ) : (
