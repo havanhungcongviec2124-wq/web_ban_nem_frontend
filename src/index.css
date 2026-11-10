@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Noto Serif", ui-serif, Georgia, serif;
+  --color-nep-cream: #faf7ef;
+  --color-nep-paper: #fffefa;
+  --color-nep-green: #31583b;
+  --color-nep-ink: #26392c;
+  --color-nep-muted: #75796c;
+  --color-nep-line: #dedccf;
+  --color-nep-mint: #e8eedf;
+  --color-nep-rose: #ad3c32;
+  --color-nep-blush: #f7e8e1;
+  --color-nep-footer: #213b2b;
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-scale-in {
+    animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #faf7ef;
+  color: #26392c;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #faf7ef;
+}
+::-webkit-scrollbar-thumb {
+  background: #dedccf;
+  border-radius: 9999px;
+}
