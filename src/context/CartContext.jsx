@@ -39,7 +39,7 @@ export const CartProvider = ({ children }) => {
   const orders = useSelector((state) => state.orders.items);
   const { isAuthenticated, isAdmin } = useSelector((state) => state.auth);
 
-  // Tải đơn hàng thực tế từ backend khi khởi chạy hoặc đăng nhập
+  // Tải đơn hàng thực tế từ backend khi đã đăng nhập
   useEffect(() => {
     if (isAuthenticated) {
       if (isAdmin) {
@@ -47,9 +47,6 @@ export const CartProvider = ({ children }) => {
       } else {
         dispatch(fetchMyOrders());
       }
-    } else {
-      // Khách vãng lai cũng tải danh sách đơn (hoặc đơn công khai)
-      dispatch(fetchOrders());
     }
   }, [dispatch, isAuthenticated, isAdmin]);
 
@@ -163,24 +160,33 @@ export const CartProvider = ({ children }) => {
     };
 
     const resultAction = await dispatch(createOrderThunk(payload));
-    clearCart();
-    dispatch(removeVoucherAction());
 
     if (createOrderThunk.fulfilled.match(resultAction)) {
+      clearCart();
+      dispatch(removeVoucherAction());
       showToast('Đặt hàng thành công!');
-      return resultAction.payload;
-    } else {
-      showToast('Đã ghi nhận đơn hàng!');
-      return {
-        id: `NN-${Date.now().toString().slice(-6)}`,
-        ...payload,
-      };
+      return { success: true, order: resultAction.payload };
     }
+
+    // Đặt hàng thất bại ở backend — không tạo dữ liệu giả, báo lỗi thật cho người dùng
+    showToast(`Đặt hàng thất bại: ${resultAction.payload || 'Lỗi kết nối máy chủ!'}`);
+    return { success: false, message: resultAction.payload || 'Lỗi kết nối máy chủ!' };
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
-    dispatch(updateOrderStatusThunk({ orderId, status: newStatus }));
-    showToast(`Đã cập nhật trạng thái đơn sang "${newStatus}"`);
+    // Hỗ trợ truyền chuỗi trạng thái hoặc object { status, assignee, scheduleNote, paymentStatus }
+    const updateData = typeof newStatus === 'string' ? { status: newStatus } : newStatus;
+    const resultAction = await dispatch(updateOrderStatusThunk({ orderId, ...updateData }));
+
+    if (updateOrderStatusThunk.fulfilled.match(resultAction)) {
+      if (typeof newStatus === 'string') {
+        showToast(`Đã cập nhật trạng thái đơn sang "${newStatus}"`);
+      } else {
+        showToast('Đã cập nhật thông tin giao hàng cho đơn!');
+      }
+    } else {
+      showToast(`Cập nhật thất bại: ${resultAction.payload || 'Lỗi kết nối!'}`);
+    }
   };
 
   return (

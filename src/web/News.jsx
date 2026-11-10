@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BLOG_POSTS } from '../data/mockData';
+import { BLOG_POSTS } from '../data/siteContent';
 import { Eyebrow } from '../components/NepUI';
 
 const News = () => {

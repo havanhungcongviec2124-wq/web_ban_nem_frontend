@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { STORE_INFO } from '../data/mockData';
+import { STORE_INFO } from '../data/siteContent';
 
 const Foodter = () => {
   return (

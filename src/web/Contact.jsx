@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { STORE_INFO } from '../data/mockData';
+import { STORE_INFO } from '../data/siteContent';
 import { Eyebrow } from '../components/NepUI';
 
 const Contact = () => {

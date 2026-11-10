@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../redux/product/ProductApi';
 import { fetchCombos } from '../redux/combo/ComboApi';
 import { fetchCategories } from '../redux/category/CategoryApi';
-import { FAQS } from '../data/mockData';
+import { FAQS } from '../data/siteContent';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { Eyebrow, formatVnd, SpiceChoice } from '../components/NepUI';

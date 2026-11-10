@@ -108,7 +108,7 @@ const Login = () => {
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@nepnem.vn hoặc email của bạn"
+                placeholder="Nhập email tài khoản của bạn"
                 required
                 className="w-full h-11 px-3.5 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
               />
@@ -122,7 +122,7 @@ const Login = () => {
                 <button
                   type="button"
                   tabIndex={-1}
-                  onClick={() => alert('Vui lòng liên hệ quản trị viên hoặc dùng tài khoản mẫu để đăng nhập!')}
+                  onClick={() => alert('Vui lòng liên hệ quản trị viên qua hotline để đặt lại mật khẩu!')}
                   className="text-[12px] text-nep-green hover:underline"
                 >
                   Quên mật khẩu?
