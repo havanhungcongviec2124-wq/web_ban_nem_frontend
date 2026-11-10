@@ -1,106 +1,61 @@
 import React from 'react';
-import { STORE_INFO } from '../data/mockData';
-import { IconShieldCheck, IconClock, IconStar } from '../components/Icons';
+import { Link } from 'react-router-dom';
+import { Eyebrow } from '../components/NepUI';
 
 const About = () => {
   return (
-    <div className="bg-stone-50 min-h-screen py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        
-        {/* Hero About */}
-        <div className="text-center space-y-4">
-          <span className="text-xs font-black uppercase tracking-widest text-red-700 bg-red-100 px-3 py-1 rounded-full inline-block">
-            Câu Chuyện Thương Hiệu
-          </span>
-          <h1 className="text-3xl sm:text-5xl font-black text-stone-900 tracking-tight">
-            Nem Chua Xứ Thanh - ZS Food
+    <div className="bg-nep-cream">
+      <section className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-center p-4 sm:p-8 lg:p-[72px]">
+        <div className="flex-1 w-full">
+          <img src="/assets/story.png" alt="Nếp gói thủ công" className="w-full h-[280px] sm:h-[440px] object-cover rounded-xl" />
+        </div>
+        <div className="flex-1 space-y-5">
+          <Eyebrow>Chuyện nhà Nếp</Eyebrow>
+          <h1 className="font-serif font-semibold text-[36px] sm:text-[48px] leading-[1.3] tracking-[-0.6px]">
+            Giữ nếp gói.<br />Gửi vị thân quen.
           </h1>
-          <p className="text-stone-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-            Hành trình hơn 40 năm gìn giữ và nâng tầm hương vị nem chua truyền thống Thanh Hóa - đậm đà, giòn ngon, trọn vẹn phong vị quê hương.
+          <p className="text-[14px] leading-[1.6] text-nep-muted">
+            Với Nếp, nem ngon không chỉ ở vị chua dịu hay lớp lá thơm. Đó còn là sự chỉn chu trong từng phần nhỏ, để món ăn quen thuộc trở thành một lời mời ngồi lại bên nhau.
+          </p>
+          <p className="text-[14px] leading-[1.6] text-nep-muted">
+            Chúng tôi chọn cách kể chuyện bằng món ăn: thành phần rõ ràng, gia vị theo ý và hướng dẫn thưởng thức dễ hiểu.
           </p>
         </div>
+      </section>
 
-        {/* Feature Image & Story */}
-        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs p-6 sm:p-10 space-y-8">
-          <img 
-            src="https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=1200&q=80"
-            alt="Nghề làm nem truyền thống" 
-            className="w-full h-72 sm:h-96 object-cover rounded-2xl"
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-stone-700 text-sm leading-relaxed">
-            <div>
-              <h3 className="text-lg font-black text-stone-900 mb-3 text-red-800">
-                1. Nguồn Gốc & Tâm Huyết Gia Truyền
-              </h3>
-              <p className="mb-3">
-                Khởi nguồn từ một xưởng nem nhỏ gia đình tại TP. Thanh Hóa từ những năm 1985, ZS Food luôn kiên định với một triết lý: <strong>"Chỉ dùng thịt lợn tươi nóng dẻo mông loại một và ủ men tự nhiên trong lá chuối xanh"</strong>.
-              </p>
-              <p>
-                Không chất bảo quản, không phẩm màu công nghiệp, màu hồng đào của nem là màu tự nhiên của thịt lợn tươi phản ứng lên men với thính gạo rang tay.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-black text-stone-900 mb-3 text-emerald-800">
-                2. Đột Phá Với Tính Năng Tùy Chỉnh Gia Vị
-              </h3>
-              <p className="mb-3">
-                Thấu hiểu mỗi thực khách có một khẩu vị đặc trưng, ZS Food là thương hiệu tiên phong cho phép khách hàng <strong>tùy chỉnh lượng Tỏi, Ớt và Lá Đinh Lăng độc lập</strong> khi đặt nem.
-              </p>
-              <p>
-                Đồng thời, chúng tôi lắng nghe thời gian dự kiến thưởng thức của bạn để chọn đúng mẻ nem vừa chua tới, giúp trải nghiệm ẩm thực luôn trọn vẹn nhất.
-              </p>
-            </div>
-          </div>
+      <section className="bg-nep-mint px-4 sm:px-8 lg:px-[72px] py-16 space-y-8">
+        <div className="space-y-2.5">
+          <Eyebrow>Ba điều Nếp giữ</Eyebrow>
+          <h2 className="font-serif font-semibold text-[32px] sm:text-[36px] leading-[1.3] tracking-[-0.6px]">
+            Gói kỹ. Chọn vị. Đúng dịp.
+          </h2>
         </div>
-
-        {/* 4 Steps of Quality Process */}
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-black text-stone-900">Quy Trình Làm Nem Chuẩn 4 Bước</h2>
-            <p className="text-xs text-stone-500 mt-1">Từ lò mổ buổi sớm đến bàn tiệc của bạn</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs">
-              <span className="text-2xl font-black text-red-700 block mb-2">01</span>
-              <h4 className="font-bold text-stone-900 text-sm mb-1">Chọn Thịt & Da Lợn Sạch</h4>
-              <p className="text-xs text-stone-500 leading-relaxed">
-                Thịt nạc mông tươi lấy lúc 4h sáng, lọc bỏ hoàn toàn mỡ và gân. Bì lợn cạo trắng tinh và thái chỉ đều tăm tắp.
-              </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { n: '01', t: 'Gói kỹ từng phần', d: 'Quy cách, thành phần luôn rõ ràng — để bạn biết mình đang mang gì về bàn.' },
+            { n: '02', t: 'Vừa khẩu vị bạn', d: 'Tỏi, Ớt, Đinh lăng: Ít hoặc Nhiều. Nếp ghi rõ đến tận từng phần hàng.' },
+            { n: '03', t: 'Đúng dịp sum vầy', d: 'Bạn báo ngày dùng. Nếp tư vấn lịch giao phù hợp, không hứa suông giờ ship.' },
+          ].map((s) => (
+            <div key={s.n} className="bg-nep-cream rounded-xl p-6 space-y-3">
+              <p className="font-serif text-[32px] text-nep-green">{s.n}</p>
+              <p className="text-[14px] font-semibold">{s.t}</p>
+              <p className="text-[12px] leading-[1.6] text-nep-muted">{s.d}</p>
             </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs">
-              <span className="text-2xl font-black text-amber-600 block mb-2">02</span>
-              <h4 className="font-bold text-stone-900 text-sm mb-1">Xay & Phối Trộn Thính</h4>
-              <p className="text-xs text-stone-500 leading-relaxed">
-                Xay lạnh để thịt không bị chín ép. Phối trộn cùng thính gạo rang vàng mịn và tiêu sọ đập dập thơm lừng.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs">
-              <span className="text-2xl font-black text-emerald-700 block mb-2">03</span>
-              <h4 className="font-bold text-stone-900 text-sm mb-1">Thêm Gia Vị & Gói Lá</h4>
-              <p className="text-xs text-stone-500 leading-relaxed">
-                Kẹp tỏi, ớt, lá đinh lăng theo đúng yêu cầu riêng của khách. Gói chặt trong 5-7 lớp lá chuối xanh tươi.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs">
-              <span className="text-2xl font-black text-stone-700 block mb-2">04</span>
-              <h4 className="font-bold text-stone-900 text-sm mb-1">Ủ Men Tự Nhiên & Giao Hàng</h4>
-              <p className="text-xs text-stone-500 leading-relaxed">
-                Ủ nem ở nhiệt độ tiêu chuẩn 22-26°C trong 48-72h. Giao hỏa tốc khi nem vừa đạt độ chua giòn hoàn hảo.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
+      </section>
 
-      </div>
+      <section className="px-4 sm:px-8 lg:px-[72px] py-16 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+        <p className="font-serif font-semibold text-[28px] leading-[1.3]">Muốn ngồi lại bên một gói nem?</p>
+        <Link
+          to="/products"
+          className="inline-flex items-center justify-center min-h-12 px-[22px] rounded-lg bg-nep-rose text-white text-[14px] font-semibold"
+        >
+          Chọn món ngon →
+        </Link>
+      </section>
     </div>
   );
 };
 
 export default About;
-

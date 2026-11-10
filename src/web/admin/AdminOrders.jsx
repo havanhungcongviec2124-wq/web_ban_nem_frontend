@@ -1,230 +1,127 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import { 
-  IconClock, 
-  IconCheck, 
-  IconGarlic, 
-  IconChili, 
-  IconHerb, 
-  IconMapPin, 
-  IconPhone,
-  IconSearch
-} from '../../components/Icons';
+import { Card, GhostButton, PageTitle, SearchInput, StatusPill, formatVnd, normalizeStatus } from './adminUi';
+
+const TABS = [
+  { id: 'ALL', label: 'Tất cả' },
+  { id: 'Chờ xác nhận', label: 'Chờ xác nhận' },
+  { id: 'Đang chuẩn bị', label: 'Đang chuẩn bị' },
+  { id: 'Đang giao', label: 'Đang giao' },
+  { id: 'Hoàn tất', label: 'Hoàn tất' },
+];
 
 const AdminOrders = () => {
-  const { orders, updateOrderStatus } = useCart();
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const { orders } = useCart();
+  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useState('');
+  const tab = params.get('status') || 'ALL';
 
-  const statuses = [
-    'Chờ xác nhận',
-    'Đang ủ men',
-    'Đang đóng gói',
-    'Đang giao hàng',
-    'Hoàn thành',
-    'Đã hủy'
-  ];
+  const counts = useMemo(() => {
+    const c = { ALL: orders.length };
+    TABS.slice(1).forEach((t) => {
+      c[t.id] = orders.filter((o) => normalizeStatus(o.status) === t.id).length;
+    });
+    return c;
+  }, [orders]);
 
-  const filteredOrders = orders.filter(order => {
-    if (statusFilter !== 'ALL' && order.status !== statusFilter) return false;
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase().trim();
-      const matchId = order.id.toLowerCase().includes(q);
-      const matchName = (order.customerName || '').toLowerCase().includes(q);
-      const matchPhone = (order.phone || '').toLowerCase().includes(q);
-      if (!matchId && !matchName && !matchPhone) return false;
+  const filtered = orders.filter((order) => {
+    if (tab !== 'ALL' && normalizeStatus(order.status) !== tab) return false;
+    if (query.trim()) {
+      const q = query.toLowerCase().trim();
+      const blob = `${order.id} ${order.customerName} ${order.phone}`.toLowerCase();
+      if (!blob.includes(q)) return false;
     }
     return true;
   });
 
   return (
-    <div className="space-y-6">
-      
-      {/* Header & Controls */}
-      <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-        <div>
-          <h2 className="text-xl font-black text-stone-900">Quản Lý Đơn Hàng & Khẩu Vị Nem</h2>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Xem chính xác yêu cầu Tỏi, Ớt, Đinh Lăng và thời gian khách dự kiến ăn để ủ mẻ nem đúng ngày
-          </p>
-        </div>
+    <div>
+      <PageTitle
+        title="Đơn hàng"
+        subtitle="Theo dõi trạng thái giao và thời điểm khách dự định sử dụng — hai thông tin riêng biệt."
+      />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 sm:w-64">
-            <input 
-              type="text"
-              placeholder="Tìm mã đơn, tên, số ĐT..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600"
-            />
-            <IconSearch className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-xs border border-stone-300 rounded-xl bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-red-600"
-          >
-            <option value="ALL">Tất cả trạng thái ({orders.length})</option>
-            {statuses.map(st => (
-              <option key={st} value={st}>
-                {st} ({orders.filter(o => o.status === st).length})
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-wrap gap-2 mb-5">
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setParams(t.id === 'ALL' ? {} : { status: t.id })}
+              className={`h-10 px-3.5 rounded-full text-[13px] border ${
+                active ? 'bg-nep-green text-nep-cream border-nep-green' : 'bg-nep-paper text-nep-green border-nep-line'
+              }`}
+            >
+              {t.label}{' '}
+              <span className={active ? 'text-white/80' : 'text-nep-rose'}>{counts[t.id] || 0}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Orders Cards List */}
-      {filteredOrders.length > 0 ? (
-        <div className="space-y-4">
-          {filteredOrders.map((order) => (
-            <div 
-              key={order.id}
-              className="bg-white rounded-2xl border border-stone-200 shadow-xs p-5 sm:p-6 space-y-4 hover:border-red-300 transition-colors"
-            >
-              {/* Top row: Order ID, Time, Status Change */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-base font-black text-red-700">
-                    #{order.id}
-                  </span>
-                  <span className="text-xs text-stone-400">
-                    Đặt lúc: {order.createdAt}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-3xs font-bold uppercase">
-                    {order.paymentMethod}
-                  </span>
-                </div>
+      <div className="flex flex-col lg:flex-row gap-3 mb-4">
+        <SearchInput value={query} onChange={setQuery} placeholder="Tìm mã đơn, tên khách hoặc số điện thoại..." />
+        <GhostButton className="shrink-0">Xuất danh sách</GhostButton>
+      </div>
 
-                {/* Status selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-stone-500 font-semibold">Trạng thái:</span>
-                  <select
-                    value={order.status}
-                    onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border focus:outline-none ${
-                      order.status === 'Hoàn thành'
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                        : order.status === 'Đang giao hàng'
-                          ? 'bg-blue-50 text-blue-800 border-blue-300'
-                          : order.status === 'Đang ủ men'
-                            ? 'bg-purple-50 text-purple-800 border-purple-300'
-                            : 'bg-amber-50 text-amber-800 border-amber-300'
-                    }`}
-                  >
-                    {statuses.map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button type="button" className="h-10 px-3 rounded-xl border border-[#ead9b8] bg-[#f6ead8] text-[12px] text-[#8a5a28]">
+          Ngày dùng: 06–08/11/2026 ▾
+        </button>
+        <button type="button" className="h-10 px-3 rounded-xl border border-nep-line bg-nep-paper text-[12px] text-nep-green">
+          Mới đặt gần đây ▾
+        </button>
+      </div>
 
-              {/* Middle row: Customer info & Desired Eating Time */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-stone-700 bg-stone-50 p-3.5 rounded-xl border border-stone-200/60">
-                <div>
-                  <span className="text-stone-400 text-3xs uppercase font-bold block mb-1">Khách Hàng:</span>
-                  <div className="font-bold text-stone-900 text-sm">{order.customerName}</div>
-                  <div className="text-red-700 font-semibold">{order.phone}</div>
-                </div>
+      <div className="rounded-xl bg-[#eef3e8] px-4 py-3 mb-4">
+        <p className="text-[13px] font-medium text-nep-green">Ngày, giờ dùng ≠ lịch giao được báo đám</p>
+        <p className="text-[12px] text-nep-muted mt-0.5">
+          Mở chi tiết xem đầy đủ gia vị, ghi chú khách và xác nhận lịch giao riêng trước khi chuẩn bị.
+        </p>
+      </div>
 
-                <div>
-                  <span className="text-stone-400 text-3xs uppercase font-bold block mb-1">Địa chỉ giao:</span>
-                  <div className="leading-snug text-stone-800">{order.address}</div>
-                  {order.note && (
-                    <div className="text-stone-500 italic mt-1 text-2xs">
-                      Ghi chú: "{order.note}"
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-amber-100/70 p-2.5 rounded-lg border border-amber-200 text-amber-950">
-                  <span className="text-amber-900 text-3xs uppercase font-black flex items-center gap-1 mb-1">
-                    <IconClock className="w-3.5 h-3.5 text-amber-700" />
-                    Thời gian khách muốn ăn nem:
-                  </span>
-                  <div className="font-bold text-xs">
-                    {order.desiredEatTime || 'Ăn ngay trong ngày'}
-                  </div>
-                  <div className="text-3xs text-amber-800 mt-0.5">
-                    * Xưởng lưu ý chọn mẻ nem có độ lên men phù hợp
-                  </div>
-                </div>
-              </div>
-
-              {/* Items in order with individual spice selections */}
-              <div>
-                <span className="text-3xs uppercase font-extrabold text-stone-400 block mb-2">
-                  Chi tiết món nem & Tùy chọn gia vị độc lập:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {order.items?.map((item, idx) => (
-                    <div 
-                      key={idx}
-                      className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-1.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-stone-900 text-xs">{item.name}</span>
-                        <span className="text-xs font-black text-red-700 shrink-0">
-                          x{item.quantity}
-                        </span>
-                      </div>
-
-                      {/* Spice tags */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-2xs">
-                        <span className={`px-2 py-0.5 rounded-md font-semibold ${
-                          item.spices?.garlic === 'Nhiều' ? 'bg-amber-100 text-amber-900' : 'bg-stone-100 text-stone-700'
-                        }`}>
-                          🧄 Tỏi: <strong>{item.spices?.garlic || 'Nhiều'}</strong>
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-md font-semibold ${
-                          item.spices?.chili === 'Nhiều' ? 'bg-red-100 text-red-900' : 'bg-stone-100 text-stone-700'
-                        }`}>
-                          🌶️ Ớt: <strong>{item.spices?.chili || 'Ít'}</strong>
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-md font-semibold ${
-                          item.spices?.polyscias === 'Nhiều' ? 'bg-emerald-100 text-emerald-900' : 'bg-stone-100 text-stone-700'
-                        }`}>
-                          🌿 Lá: <strong>{item.spices?.polyscias || 'Nhiều'}</strong>
-                        </span>
-                      </div>
-
-                      {item.note && (
-                        <div className="text-3xs text-stone-500 italic">
-                          "{item.note}"
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Total amount */}
-              <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
-                <span className="text-xs text-stone-500">
-                  {order.items?.length} loại nem • Giao hàng tận nơi
-                </span>
-                <div className="text-right">
-                  <span className="text-xs text-stone-500 mr-2">Tổng thu:</span>
-                  <span className="text-lg font-black text-red-700">
-                    {order.totalAmount?.toLocaleString('vi-VN')}đ
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          ))}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 text-[13px] text-nep-muted">
+          Đơn mới gần đây · {filtered.length} / {orders.length} đơn
         </div>
-      ) : (
-        <div className="p-12 bg-white rounded-2xl border border-stone-200 text-center text-stone-500">
-          <p className="font-semibold text-sm">Không có đơn hàng nào theo bộ lọc này</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px]">
+            <thead>
+              <tr className="bg-[#eef2e8] text-nep-green">
+                <th className="font-medium px-5 py-3">Mã đơn</th>
+                <th className="font-medium px-5 py-3">Khách hàng</th>
+                <th className="font-medium px-5 py-3">Đặt lúc</th>
+                <th className="font-medium px-5 py-3">Tổng tiền</th>
+                <th className="font-medium px-5 py-3">Khách dùng lúc</th>
+                <th className="font-medium px-5 py-3">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((o) => (
+                <tr key={o.id} className="border-t border-nep-line hover:bg-nep-cream/80">
+                  <td className="px-5 py-3.5">
+                    <Link to={`/admin/orders/${o.id}`} className="font-medium text-nep-ink hover:text-nep-rose">
+                      {o.id}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-3.5">{o.customerName}</td>
+                  <td className="px-5 py-3.5 text-nep-muted">{o.createdAtShort || o.createdAt}</td>
+                  <td className="px-5 py-3.5">{formatVnd(o.totalAmount)}</td>
+                  <td className="px-5 py-3.5 text-nep-muted">{o.desiredEatTime || '—'}</td>
+                  <td className="px-5 py-3.5">
+                    <StatusPill status={o.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
-
+        <p className="px-5 py-3 text-[12px] text-nep-muted">Trang 1 / 1</p>
+      </Card>
     </div>
   );
 };
 
 export default AdminOrders;
-

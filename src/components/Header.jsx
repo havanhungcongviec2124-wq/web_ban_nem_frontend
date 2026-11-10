@@ -71,7 +71,7 @@ const Header = () => {
 
           <Link to="/cart" className="flex items-center gap-[5px]" aria-label="Giỏ hàng">
             <img src="/assets/bag.svg" alt="" width={20} height={20} />
-            <span className="text-[12px] font-semibold text-nep-rose">{totalItems}</span>
+            <span className="text-[12px] font-medium text-nep-green">{totalItems}</span>
           </Link>
 
           <button

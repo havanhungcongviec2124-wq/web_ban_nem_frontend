@@ -1,324 +1,489 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { 
-  IconTrash, 
-  IconPlus, 
-  IconMinus, 
-  IconArrowRight, 
-  IconCheck, 
-  IconGarlic, 
-  IconChili, 
-  IconHerb,
-  IconClock,
-  IconShieldCheck
-} from '../components/Icons';
-import { VOUCHERS } from '../data/mockData';
+
+const formatVnd = (amount) => {
+  return amount !== undefined && amount !== null
+    ? `${amount.toLocaleString('vi-VN')} đ`
+    : '0 đ';
+};
 
 const Cart = () => {
-  const { 
-    cart, 
-    updateQuantity, 
-    removeFromCart, 
-    clearCart,
-    totalItems, 
-    totalPrice, 
-    shippingFee, 
-    discountAmount, 
+  const {
+    cart,
+    updateQuantity,
+    removeFromCart,
+    totalItems,
+    totalPrice,
+    shippingFee,
     finalPrice,
-    activeVoucher,
-    applyVoucher,
-    removeVoucher
+    updateItemSpices,
+    updateComboSubSpices,
   } = useCart();
 
   const navigate = useNavigate();
-  const [voucherInput, setVoucherInput] = useState('');
-  const [voucherMsg, setVoucherMsg] = useState({ text: '', isError: false });
 
-  const handleApplyVoucher = (e) => {
-    e.preventDefault();
-    if (!voucherInput.trim()) return;
-    const res = applyVoucher(voucherInput);
-    if (res.success) {
-      setVoucherMsg({ text: res.message, isError: false });
-      setVoucherInput('');
-    } else {
-      setVoucherMsg({ text: res.message, isError: true });
+  // State to track which item is currently being edited for spices
+  // format: { cartItemId, subIndex: null | number }
+  const [editingSpiceTarget, setEditingSpiceTarget] = useState(null);
+  const [tempSpices, setTempSpices] = useState({ garlic: 'Ít', chili: 'Ít', polyscias: 'Nhiều' });
+
+  // Detect if there are multiple lines of the same product with different spices
+  const hasMultipleSameProduct = React.useMemo(() => {
+    const idCounts = {};
+    for (const item of cart) {
+      idCounts[item.id] = (idCounts[item.id] || 0) + 1;
     }
+    return Object.values(idCounts).some((count) => count > 1);
+  }, [cart]);
+
+  const handleOpenEditSpice = (cartItemId, currentSpices, subIndex = null) => {
+    setEditingSpiceTarget({ cartItemId, subIndex });
+    setTempSpices(currentSpices || { garlic: 'Ít', chili: 'Ít', polyscias: 'Nhiều' });
+  };
+
+  const handleSaveSpices = () => {
+    if (!editingSpiceTarget) return;
+    const { cartItemId, subIndex } = editingSpiceTarget;
+    if (subIndex !== null) {
+      updateComboSubSpices(cartItemId, subIndex, tempSpices);
+    } else {
+      updateItemSpices(cartItemId, tempSpices);
+    }
+    setEditingSpiceTarget(null);
   };
 
   if (cart.length === 0) {
     return (
-      <div className="bg-stone-50 min-h-screen py-16">
-        <div className="max-w-2xl mx-auto px-4 text-center">
-          <div className="bg-white rounded-3xl border border-stone-200 p-10 shadow-xs">
-            <span className="text-6xl block mb-4">🛒</span>
-            <h2 className="text-2xl font-black text-stone-900 mb-2">Giỏ hàng của bạn đang trống</h2>
-            <p className="text-stone-500 text-sm mb-6">
-              Bạn chưa chọn món nem nào. Hãy khám phá ngay các món nem chua đặc sản và combo tiết kiệm tại ZS Food nhé!
-            </p>
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-red-700 hover:bg-red-800 text-white font-bold text-sm shadow-md transition-all"
-            >
-              <span>Xem Thực Đơn Nem</span>
-              <IconArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+      <div className="bg-[#faf7ef] min-h-screen text-[#26392c] w-full px-4 sm:px-8 lg:px-[72px] pt-12 pb-24 text-center">
+        <div className="max-w-md mx-auto bg-[#fffefa] border border-[#dedccf] rounded-2xl p-10 space-y-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <p className="font-serif font-bold text-[32px] text-[#22382a]">Giỏ hàng đang trống.</p>
+          <p className="text-[14px] text-[#6b7264]">
+            Chọn một gói nem, một combo — rồi Nếp lo phần còn lại.
+          </p>
+          <Link
+            to="/products"
+            className="inline-flex items-center justify-center min-h-12 px-6 rounded-xl bg-[#ad3c32] hover:bg-[#962f26] text-white text-[14px] font-medium shadow-xs transition-colors"
+          >
+            Chọn món ngon ngay →
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-stone-50 min-h-screen py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-[#faf7ef] min-h-screen text-[#26392c]">
+      <div className="w-full px-4 sm:px-8 lg:px-[72px] pt-7 pb-24">
         
-        {/* Title */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-stone-900">
-              Giỏ Hàng Của Bạn ({totalItems} món)
-            </h1>
-            <p className="text-xs text-stone-500 mt-1">
-              Kiểm tra kỹ khẩu vị gia vị và thời gian dự kiến ăn trước khi đặt hàng
-            </p>
+        {/* Breadcrumb */}
+        <nav className="text-[12px] text-[#75796c] mb-6 flex items-center gap-2">
+          <Link to="/home" className="hover:text-[#26392c]">Trang chủ</Link>
+          <span>/</span>
+          <span className="text-[#26392c] font-medium">Giỏ hàng</span>
+        </nav>
+
+        {/* Heading & Step Indicator */}
+        <div className="mb-8 space-y-3">
+          <h1 className="font-serif font-bold text-[34px] sm:text-[42px] text-[#22382a] leading-tight tracking-[-0.6px]">
+            Gói đủ vị, sẵn sàng vui.
+          </h1>
+
+          {/* Stepper bar */}
+          <div className="flex items-center gap-6 text-[13px] pt-1">
+            <span className="font-semibold text-[#ad3c32] border-b-2 border-[#ad3c32] pb-0.5">
+              01 Giỏ hàng
+            </span>
+            <span className="text-[#8c9184]">
+              02 Thanh toán
+            </span>
+            <span className="text-[#8c9184]">
+              03 Xác nhận
+            </span>
           </div>
-          <button 
-            onClick={clearCart}
-            className="text-xs text-stone-400 hover:text-red-700 underline font-medium self-start sm:self-auto"
-          >
-            Xóa tất cả
-          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Main Grid: Left Items List (8 cols), Right Summary (4 cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
-          {/* Left: Cart Items List */}
+          {/* LEFT COLUMN */}
           <div className="lg:col-span-8 space-y-4">
-            {cart.map((item) => (
-              <div 
-                key={item.cartItemId}
-                className="bg-white rounded-2xl border border-stone-200 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row gap-4 sm:items-center justify-between"
-              >
-                {/* Product image & details */}
-                <div className="flex items-start gap-4 flex-1">
-                  <img 
-                    src={item.image} 
-                    alt={item.name} 
-                    className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-stone-100 shrink-0"
-                  />
-                  <div className="space-y-1.5 flex-1">
-                    <h3 className="font-bold text-stone-900 text-sm sm:text-base leading-snug">
-                      <Link to={`/product/${item.id}`} className="hover:text-red-700">
-                        {item.name}
-                      </Link>
-                    </h3>
-                    
-                    <div className="text-xs font-semibold text-red-700">
-                      {item.price.toLocaleString('vi-VN')}đ <span className="text-stone-400 font-normal">/ {item.unit || 'phần'}</span>
-                    </div>
-
-                    {/* Spices tags: Garlic, Chili, Polyscias */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-2xs">
-                      <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 font-medium flex items-center gap-1">
-                        <IconGarlic className="text-xs" /> Tỏi: <strong>{item.spices?.garlic || 'Nhiều'}</strong>
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-900 border border-red-200 font-medium flex items-center gap-1">
-                        <IconChili className="text-xs" /> Ớt: <strong>{item.spices?.chili || 'Ít'}</strong>
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-200 font-medium flex items-center gap-1">
-                        <IconHerb className="text-xs" /> Đinh Lăng: <strong>{item.spices?.polyscias || 'Nhiều'}</strong>
-                      </span>
-                    </div>
-
-                    {/* Eat time & Note */}
-                    {item.eatTime && (
-                      <div className="text-2xs text-stone-500 flex items-center gap-1 pt-0.5">
-                        <IconClock className="w-3 h-3 text-stone-400 shrink-0" />
-                        <span>Thời gian ăn: <strong className="text-stone-700">{item.eatTime}</strong></span>
-                      </div>
-                    )}
-                    {item.note && (
-                      <div className="text-2xs text-stone-400 italic">
-                        Ghi chú: "{item.note}"
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quantity and Actions */}
-                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 border-stone-100">
-                  <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden bg-stone-50">
-                    <button 
-                      type="button" 
-                      onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                      className="p-1.5 text-stone-600 hover:bg-stone-200 transition-colors"
-                      aria-label="Decrease quantity"
-                    >
-                      <IconMinus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="w-8 text-center text-xs font-bold text-stone-900">{item.quantity}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                      className="p-1.5 text-stone-600 hover:bg-stone-200 transition-colors"
-                      aria-label="Increase quantity"
-                    >
-                      <IconPlus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-sm sm:text-base font-black text-red-700 block">
-                      {(item.price * item.quantity).toLocaleString('vi-VN')}đ
-                    </span>
-                    <button 
-                      type="button"
-                      onClick={() => removeFromCart(item.cartItemId)}
-                      className="text-2xs text-stone-400 hover:text-red-700 flex items-center gap-1 mt-1"
-                    >
-                      <IconTrash className="w-3 h-3" />
-                      <span>Xóa</span>
-                    </button>
-                  </div>
-                </div>
-
+            
+            {/* Pink Notice Box: "Cùng món, khác gia vị = hai dòng riêng" */}
+            {hasMultipleSameProduct && (
+              <div className="bg-[#faebe8] border border-[#f5d9d4] rounded-2xl p-4 sm:p-4.5 mb-5 space-y-1">
+                <h4 className="font-bold text-[13px] text-[#ad3c32]">
+                  Cùng món, khác gia vị = hai dòng riêng
+                </h4>
+                <p className="text-[12px] text-[#7a4d46] leading-[1.6]">
+                  Hai phần nem truyền thống dưới đây được giữ riêng để Nếp gói đúng khẩu vị. Kiểm tra từng dòng trước khi thanh toán nhé.
+                </p>
               </div>
-            ))}
+            )}
 
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 flex items-center gap-3">
-              <IconShieldCheck className="w-5 h-5 text-emerald-700 shrink-0" />
-              <span>
-                <strong>Cam kết ZS Food:</strong> Mọi lựa chọn gia vị (Tỏi, Ớt, Đinh Lăng) và thời gian ăn đều được truyền tải trực tiếp tới xưởng gói nem để đảm bảo nem chuẩn vị nhất!
-              </span>
+            {/* Cart Items List */}
+            <div className="space-y-4">
+              {cart.map((item) => {
+                const isComboItem = Boolean(item.isCombo || item.comboSubItems);
+
+                return (
+                  <div
+                    key={item.cartItemId}
+                    className="bg-[#fffefa] border border-[#dedccf] rounded-2xl p-5 sm:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4 relative"
+                  >
+                    {/* Top Row: Thumbnail + Info + Delete button */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-[#eee]"
+                        />
+                        <div className="space-y-0.5">
+                          <h3 className="font-semibold text-[17px] text-[#22382a] leading-tight">
+                            <Link to={`/product/${item.id}`} className="hover:text-[#ad3c32]">
+                              {item.name}
+                            </Link>
+                          </h3>
+                          <p className="text-[12px] text-[#7a8072]">
+                            {item.pack || (item.unit ? `10 chiếc · 200 g / ${item.unit}` : 'Phần')}
+                          </p>
+                          <p className="text-[12px] text-[#7a8072]">
+                            {formatVnd(item.price)} / {item.unit || 'gói'}
+                          </p>
+
+                          {/* Tag pill if single item */}
+                          {!isComboItem && item.tag && (
+                            <div className="pt-1">
+                              <span className="inline-block bg-[#e8eedf] text-[#31583b] text-[11px] font-medium px-2.5 py-0.5 rounded-full">
+                                {item.tag}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Remove button '×' */}
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(item.cartItemId)}
+                        className="text-[#9a9e94] hover:text-[#ad3c32] text-[22px] leading-none transition-colors p-1"
+                        aria-label="Xóa dòng này"
+                        title="Xóa dòng này"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    {/* Middle: Mint Spice Box */}
+                    <div className="bg-[#eef4ea] border border-[#cadbc2]/60 rounded-xl p-3.5 sm:p-4 text-[12px]">
+                      {isComboItem && item.comboSubItems ? (
+                        /* Combo item with sub-items */
+                        <div className="space-y-3">
+                          {item.comboSubItems.map((sub, sIdx) => {
+                            const isEditingThisSub =
+                              editingSpiceTarget?.cartItemId === item.cartItemId &&
+                              editingSpiceTarget?.subIndex === sIdx;
+
+                            return (
+                              <div key={sub.id || sIdx} className="space-y-1">
+                                <p className="font-medium text-[#22382a] text-[12px]">
+                                  {sub.name} · {sub.qtyText}
+                                </p>
+                                <p className="text-[#4d594d] text-[12px]">
+                                  Tỏi: {sub.spices.garlic} · Ớt: {sub.spices.chili} · Đinh lăng: {sub.spices.polyscias}
+                                </p>
+                                
+                                {!isEditingThisSub ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditSpice(item.cartItemId, sub.spices, sIdx)}
+                                    className="text-[11px] text-[#7a8072] hover:text-[#22382a] underline cursor-pointer block pt-0.5"
+                                  >
+                                    Chỉnh gia vị món này
+                                  </button>
+                                ) : (
+                                  <div className="mt-2.5 pt-2 border-t border-[#cadbc2] space-y-2 bg-white/70 p-2.5 rounded-lg">
+                                    <div className="flex items-center gap-2 text-[11px]">
+                                      <span className="w-16 font-semibold">Tỏi:</span>
+                                      {['Ít', 'Nhiều'].map((opt) => (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          onClick={() => setTempSpices((s) => ({ ...s, garlic: opt }))}
+                                          className={`px-2.5 py-1 rounded text-2xs font-medium border ${
+                                            tempSpices.garlic === opt
+                                              ? 'bg-[#31583b] text-white border-[#31583b]'
+                                              : 'bg-white text-[#555] border-[#ccc]'
+                                          }`}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[11px]">
+                                      <span className="w-16 font-semibold">Ớt:</span>
+                                      {['Ít', 'Nhiều'].map((opt) => (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          onClick={() => setTempSpices((s) => ({ ...s, chili: opt }))}
+                                          className={`px-2.5 py-1 rounded text-2xs font-medium border ${
+                                            tempSpices.chili === opt
+                                              ? 'bg-[#31583b] text-white border-[#31583b]'
+                                              : 'bg-white text-[#555] border-[#ccc]'
+                                          }`}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[11px]">
+                                      <span className="w-16 font-semibold">Đinh lăng:</span>
+                                      {['Ít', 'Nhiều'].map((opt) => (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          onClick={() => setTempSpices((s) => ({ ...s, polyscias: opt }))}
+                                          className={`px-2.5 py-1 rounded text-2xs font-medium border ${
+                                            tempSpices.polyscias === opt
+                                              ? 'bg-[#31583b] text-white border-[#31583b]'
+                                              : 'bg-white text-[#555] border-[#ccc]'
+                                          }`}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={handleSaveSpices}
+                                        className="px-3 py-1 bg-[#31583b] text-white rounded text-2xs font-bold"
+                                      >
+                                        Lưu gia vị
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingSpiceTarget(null)}
+                                        className="text-2xs text-[#777] hover:underline"
+                                      >
+                                        Hủy
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        /* Single product spice display */
+                        <div>
+                          <p className="text-[#22382a] font-medium text-[13px]">
+                            Tỏi: {item.spices?.garlic || 'Nhiều'} · Ớt: {item.spices?.chili || 'Ít'} · Đinh lăng: {item.spices?.polyscias || 'Nhiều'}
+                          </p>
+
+                          {editingSpiceTarget?.cartItemId !== item.cartItemId ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditSpice(item.cartItemId, item.spices, null)}
+                              className="text-[12px] text-[#5e6657] hover:text-[#22382a] underline cursor-pointer block mt-1"
+                            >
+                              Chỉnh gia vị
+                            </button>
+                          ) : (
+                            <div className="mt-2.5 pt-2 border-t border-[#cadbc2] space-y-2 bg-white/70 p-2.5 rounded-lg">
+                              <div className="flex items-center gap-2 text-[11px]">
+                                <span className="w-16 font-semibold">Tỏi:</span>
+                                {['Ít', 'Nhiều'].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setTempSpices((s) => ({ ...s, garlic: opt }))}
+                                    className={`px-2.5 py-1 rounded text-2xs font-medium border ${
+                                      tempSpices.garlic === opt
+                                        ? 'bg-[#31583b] text-white border-[#31583b]'
+                                        : 'bg-white text-[#555] border-[#ccc]'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px]">
+                                <span className="w-16 font-semibold">Ớt:</span>
+                                {['Ít', 'Nhiều'].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setTempSpices((s) => ({ ...s, chili: opt }))}
+                                    className={`px-2.5 py-1 rounded text-2xs font-medium border ${
+                                      tempSpices.chili === opt
+                                        ? 'bg-[#31583b] text-white border-[#31583b]'
+                                        : 'bg-white text-[#555] border-[#ccc]'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px]">
+                                <span className="w-16 font-semibold">Đinh lăng:</span>
+                                {['Ít', 'Nhiều'].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setTempSpices((s) => ({ ...s, polyscias: opt }))}
+                                    className={`px-2.5 py-1 rounded text-2xs font-medium border ${
+                                      tempSpices.polyscias === opt
+                                        ? 'bg-[#31583b] text-white border-[#31583b]'
+                                        : 'bg-white text-[#555] border-[#ccc]'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={handleSaveSpices}
+                                  className="px-3 py-1 bg-[#31583b] text-white rounded text-2xs font-bold"
+                                >
+                                  Lưu gia vị
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingSpiceTarget(null)}
+                                  className="text-2xs text-[#777] hover:underline"
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Row: Stepper & Line Total */}
+                    <div className="flex items-center justify-between pt-1">
+                      {/* Stepper */}
+                      <div className="bg-[#fffefa] border border-[#cbd8c6] rounded-lg flex items-center px-1.5 py-1">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+                          className="w-6 h-6 flex items-center justify-center text-[#555] hover:text-black font-semibold text-[15px] transition-colors"
+                          aria-label="Giảm"
+                        >
+                          −
+                        </button>
+                        <span className="w-7 text-center font-semibold text-[14px] text-[#22382a]">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                          className="w-6 h-6 flex items-center justify-center text-[#555] hover:text-black font-semibold text-[15px] transition-colors"
+                          aria-label="Tăng"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Line Total */}
+                      <div className="text-right">
+                        <span className="font-bold text-[17px] text-[#22382a]">
+                          {formatVnd(item.price * item.quantity)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Back link */}
+            <div className="pt-2">
+              <Link
+                to="/products"
+                className="text-[13px] text-[#5e6657] hover:text-[#22382a] flex items-center gap-1.5 transition-colors font-medium"
+              >
+                <span>←</span>
+                <span>Chọn thêm món ngon</span>
+              </Link>
             </div>
           </div>
 
-          {/* Right: Order Summary & Voucher */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* RIGHT COLUMN (SUMMARY & OCCASION NOTE) */}
+          <div className="lg:col-span-4 space-y-4">
             
-            {/* Voucher Box */}
-            <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs space-y-3">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-stone-900">
-                Mã Khuyến Mãi / Voucher
-              </h3>
-
-              {activeVoucher ? (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-black text-red-700 block">
-                      Mã: {activeVoucher.code}
-                    </span>
-                    <span className="text-2xs text-stone-600">
-                      -{activeVoucher.discount.toLocaleString('vi-VN')}đ ({activeVoucher.desc})
-                    </span>
-                  </div>
-                  <button 
-                    onClick={removeVoucher}
-                    className="text-xs text-stone-400 hover:text-red-700 font-bold"
-                  >
-                    Hủy
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleApplyVoucher} className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Nhập mã giảm giá..."
-                    value={voucherInput}
-                    onChange={(e) => setVoucherInput(e.target.value)}
-                    className="flex-1 px-3 py-2 text-xs border border-stone-300 rounded-lg uppercase font-semibold focus:outline-none focus:ring-2 focus:ring-red-600"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-lg transition-colors"
-                  >
-                    Áp dụng
-                  </button>
-                </form>
-              )}
-
-              {voucherMsg.text && (
-                <div className={`text-2xs ${voucherMsg.isError ? 'text-red-600' : 'text-emerald-700'}`}>
-                  {voucherMsg.text}
-                </div>
-              )}
-
-              {/* Suggested vouchers */}
-              <div className="pt-2 border-t border-stone-100">
-                <span className="text-3xs text-stone-400 uppercase font-bold block mb-1.5">Gợi ý mã hot:</span>
-                <div className="flex flex-wrap gap-1.5 text-2xs">
-                  {VOUCHERS.map(v => (
-                    <button
-                      key={v.code}
-                      type="button"
-                      onClick={() => {
-                        setVoucherInput(v.code);
-                        applyVoucher(v.code);
-                      }}
-                      className="px-2 py-1 bg-stone-100 hover:bg-red-50 text-stone-700 hover:text-red-700 rounded-md border border-stone-200 font-mono font-bold"
-                    >
-                      {v.code}
-                    </button>
-                  ))}
-                </div>
+            {/* Card 1: "Đơn ngon của bạn" */}
+            <div className="bg-[#fffefa] border border-[#dedccf] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
+              <div>
+                <h3 className="font-serif font-bold text-[22px] text-[#22382a] leading-tight">
+                  Đơn ngon của bạn
+                </h3>
+                <p className="text-[12px] text-[#7a8072] mt-1">
+                  {cart.length} dòng hàng · {totalItems} phần đặt mua
+                </p>
               </div>
-            </div>
 
-            {/* Total Summary */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-4">
-              <h3 className="font-black text-base text-stone-900 pb-3 border-b border-stone-100">
-                Tóm Tắt Đơn Hàng
-              </h3>
-
-              <div className="space-y-2.5 text-xs text-stone-600">
-                <div className="flex justify-between">
-                  <span>Tạm tính tiền hàng:</span>
-                  <span className="font-bold text-stone-800">{totalPrice.toLocaleString('vi-VN')}đ</span>
+              {/* Subtotal & Shipping */}
+              <div className="space-y-2.5 text-[13px] text-[#3e4539] pt-2">
+                <div className="flex justify-between items-center">
+                  <span>Tạm tính</span>
+                  <span className="font-medium text-[#22382a]">{formatVnd(totalPrice)}</span>
                 </div>
 
-                <div className="flex justify-between">
-                  <span>Phí vận chuyển:</span>
-                  <span>
-                    {shippingFee === 0 ? (
-                      <span className="text-emerald-600 font-bold">Miễn phí (Đơn ≥300k)</span>
-                    ) : (
-                      <span className="font-bold text-stone-800">{shippingFee.toLocaleString('vi-VN')}đ</span>
-                    )}
-                  </span>
-                </div>
-
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-red-700 font-semibold">
-                    <span>Giảm giá khuyến mãi:</span>
-                    <span>-{discountAmount.toLocaleString('vi-VN')}đ</span>
-                  </div>
-                )}
-
-                <div className="pt-3 border-t border-stone-200 flex justify-between items-baseline">
-                  <span className="text-sm font-bold text-stone-900">Tổng thanh toán:</span>
-                  <span className="text-2xl font-black text-red-700">
-                    {finalPrice.toLocaleString('vi-VN')}đ
-                  </span>
+                <div className="flex justify-between items-center">
+                  <span>Phí giao hàng</span>
+                  <span className="font-medium text-[#22382a]">{formatVnd(shippingFee)}</span>
                 </div>
               </div>
 
+              {/* Divider */}
+              <div className="h-px bg-[#dedccf]" />
+
+              {/* Total */}
+              <div className="flex justify-between items-baseline pt-1">
+                <span className="font-bold text-[16px] text-[#22382a]">Tổng cộng</span>
+                <span className="font-bold text-[24px] text-[#22382a]">
+                  {formatVnd(finalPrice)}
+                </span>
+              </div>
+
+              {/* Tax note */}
+              <p className="text-[11px] text-[#8c9184] leading-relaxed">
+                Giá đã gồm thuế nếu có. Phí giao nội thành theo địa chỉ mẫu.
+              </p>
+
+              {/* Checkout CTA */}
               <button
                 type="button"
                 onClick={() => navigate('/checkout')}
-                className="w-full py-4 rounded-xl bg-linear-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
+                className="w-full bg-[#ad3c32] hover:bg-[#962f26] text-white font-medium text-[14px] py-3.5 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
               >
-                <span>Tiến Hành Đặt Hàng</span>
-                <IconArrowRight className="w-4 h-4" />
+                <span>Tiến hành thanh toán</span>
+                <span>→</span>
               </button>
 
-              <Link
-                to="/products"
-                className="block text-center text-xs font-semibold text-stone-500 hover:text-red-700 pt-1"
-              >
-                ← Tiếp tục mua thêm nem
-              </Link>
+              {/* Step info caption */}
+              <p className="text-[11px] text-[#7a8072] text-center pt-0.5">
+                Bạn có thể chọn ngày, giờ sử dụng ở bước tiếp theo.
+              </p>
+            </div>
+
+            {/* Card 2: "Dành cho dịp nào của bạn?" */}
+            <div className="bg-[#fbf4e6] border border-[#ebdcc4] rounded-2xl p-5 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-[13px] text-[#82541c]">
+                <span className="text-[15px]">📅</span>
+                <h4>Dành cho dịp nào của bạn?</h4>
+              </div>
+              <p className="text-[12px] text-[#785b34] leading-[1.65]">
+                Ở bước tiếp theo, hãy nhập ngày, giờ mong muốn sử dụng. Nếp liên hệ sắp xếp giao phù hợp, không mặc định đó là giờ giao.
+              </p>
             </div>
 
           </div>
@@ -331,4 +496,3 @@ const Cart = () => {
 };
 
 export default Cart;
-

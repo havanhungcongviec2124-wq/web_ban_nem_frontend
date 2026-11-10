@@ -26,13 +26,23 @@ const MainLayout = () => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
 
+  if (isAdmin) {
+    return (
+      <div className="font-sans text-nep-ink antialiased">
+        <Outlet />
+        <SpiceModal />
+        <ToastNotification />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-nep-cream text-nep-ink antialiased">
-      {!isAdmin && <Header />}
+      <Header />
       <main className="flex-1">
         <Outlet />
       </main>
-      {!isAdmin && <Foodter />}
+      <Foodter />
       <SpiceModal />
       <ToastNotification />
     </div>

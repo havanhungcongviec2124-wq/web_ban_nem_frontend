@@ -13,7 +13,11 @@ import Contact from "../web/Contact";
 import AdminLayout from "../web/admin/AdminLayout";
 import AdminDashboard from "../web/admin/AdminDashboard";
 import AdminOrders from "../web/admin/AdminOrders";
+import AdminOrderDetail from "../web/admin/AdminOrderDetail";
 import AdminProducts from "../web/admin/AdminProducts";
+import AdminCombos from "../web/admin/AdminCombos";
+import AdminCategories from "../web/admin/AdminCategories";
+import AdminCustomers from "../web/admin/AdminCustomers";
 
 const router = createHashRouter([
   {
@@ -39,6 +43,10 @@ const router = createHashRouter([
       {
         path: "combos",
         element: <Combos />,
+      },
+      {
+        path: "combos/:id",
+        element: <ProductDetail />,
       },
       {
         path: "cart",
@@ -81,8 +89,24 @@ const router = createHashRouter([
             element: <AdminOrders />,
           },
           {
+            path: "orders/:orderId",
+            element: <AdminOrderDetail />,
+          },
+          {
             path: "products",
             element: <AdminProducts />,
+          },
+          {
+            path: "combos",
+            element: <AdminCombos />,
+          },
+          {
+            path: "categories",
+            element: <AdminCategories />,
+          },
+          {
+            path: "customers",
+            element: <AdminCustomers />,
           },
         ],
       },

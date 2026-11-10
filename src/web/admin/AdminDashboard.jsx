@@ -1,156 +1,130 @@
 import React from 'react';
-import { useCart } from '../../context/CartContext';
 import { Link } from 'react-router-dom';
-import { PRODUCTS, COMBOS } from '../../data/mockData';
-import { IconArrowRight, IconClock, IconCheck } from '../../components/Icons';
+import { useCart } from '../../context/CartContext';
+import { REVENUE_LAST_7 } from '../../data/mockData';
+import { Card, PageTitle, StatusPill, formatVnd, normalizeStatus } from './adminUi';
 
 const AdminDashboard = () => {
   const { orders } = useCart();
-
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-  const pendingOrders = orders.filter(o => o.status === 'Chờ xác nhận');
-  const fermentingOrders = orders.filter(o => o.status === 'Đang ủ men');
-  const shippingOrders = orders.filter(o => o.status === 'Đang giao hàng');
-  const completedOrders = orders.filter(o => o.status === 'Hoàn thành');
+  const pending = orders.filter((o) => normalizeStatus(o.status) === 'Chờ xác nhận');
+  const preparing = orders.filter((o) => normalizeStatus(o.status) === 'Đang chuẩn bị');
+  const latest = orders.slice(0, 4);
+  const maxRev = Math.max(...REVENUE_LAST_7.map((d) => d.value));
+  const weekTotal = REVENUE_LAST_7.reduce((s, d) => s + d.value, 0);
+  const todayRev = REVENUE_LAST_7[REVENUE_LAST_7.length - 1]?.value || 0;
+  const priority = orders.filter((o) => {
+    const st = normalizeStatus(o.status);
+    return st === 'Chờ xác nhận' || st === 'Đang chuẩn bị';
+  }).slice(0, 2);
 
   return (
-    <div className="space-y-8">
-      
-      {/* Overview Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
-          <span className="text-2xs font-extrabold uppercase tracking-wider text-stone-500 block mb-1">
-            Tổng Doanh Thu Đơn Hàng
-          </span>
-          <div className="text-2xl font-black text-red-700">
-            {totalRevenue.toLocaleString('vi-VN')}đ
-          </div>
-          <div className="text-3xs text-stone-400 mt-1">
-            Dựa trên {orders.length} đơn hàng hiện có
-          </div>
-        </div>
+    <div>
+      <PageTitle
+        title="Chào An, một ngày thật đậm đà."
+        subtitle="Theo dõi bán hàng, chuẩn bị đơn và những bữa vui sắp tới."
+      />
 
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
-          <span className="text-2xs font-extrabold uppercase tracking-wider text-stone-500 block mb-1">
-            Đơn Chờ Xác Nhận
-          </span>
-          <div className="text-2xl font-black text-amber-600">
-            {pendingOrders.length} đơn
-          </div>
-          <div className="text-3xs text-amber-700 mt-1 font-medium">
-            Cần xưởng kiểm tra mẻ nem
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
-          <span className="text-2xs font-extrabold uppercase tracking-wider text-stone-500 block mb-1">
-            Mẻ Nem Đang Ủ Men
-          </span>
-          <div className="text-2xl font-black text-emerald-700">
-            {fermentingOrders.length} đơn
-          </div>
-          <div className="text-3xs text-emerald-800 mt-1 font-medium">
-            Theo hẹn thời gian ăn của khách
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
-          <span className="text-2xs font-extrabold uppercase tracking-wider text-stone-500 block mb-1">
-            Đang Giao & Đã Giao
-          </span>
-          <div className="text-2xl font-black text-stone-900">
-            {shippingOrders.length + completedOrders.length} đơn
-          </div>
-          <div className="text-3xs text-stone-400 mt-1">
-            Hỏa tốc đúng độ chín tới
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+        {[
+          { label: 'Doanh thu hôm nay', value: formatVnd(todayRev), hint: '↑ 12% so với hôm qua' },
+          { label: 'Đơn hàng mới', value: String(orders.length), hint: `${pending.length} đơn đang chờ xác nhận` },
+          { label: 'Cần chuẩn bị', value: String(preparing.length), hint: 'Theo ngày sử dụng của khách' },
+          { label: 'Khách hàng mới', value: '9', hint: 'Trong tổng 21 khách hôm nay' },
+        ].map((s) => (
+          <Card key={s.label} className="px-5 py-5">
+            <p className="text-[13px] text-nep-muted">{s.label}</p>
+            <p className="mt-2 font-serif text-[28px] leading-none text-nep-ink tracking-[-0.5px]">{s.value}</p>
+            <p className="mt-2 text-[12px] text-nep-muted">{s.hint}</p>
+          </Card>
+        ))}
       </div>
 
-      {/* Latest Orders Preview */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-stone-200 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-base text-stone-900">Đơn Hàng Mới Nhất & Yêu Cầu Gia Vị</h3>
-            <p className="text-xs text-stone-500 mt-0.5">Xưởng theo dõi yêu cầu Tỏi, Ớt, Đinh Lăng và thời gian ăn của khách</p>
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4 mb-5">
+        <Card className="p-5">
+          <div className="flex items-start justify-between gap-3 mb-5">
+            <div>
+              <p className="text-[15px] font-medium text-nep-ink">Doanh thu 7 ngày gần đây</p>
+              <p className="mt-2 font-serif text-[28px] leading-none text-nep-ink">{formatVnd(weekTotal)}</p>
+            </div>
+            <p className="text-[12px] text-nep-muted">{REVENUE_LAST_7[0].label}–{REVENUE_LAST_7.at(-1).label}</p>
           </div>
-          <Link
-            to="/admin/orders"
-            className="text-xs font-bold text-red-700 hover:text-red-800 flex items-center gap-1"
-          >
-            <span>Xem tất cả đơn</span>
-            <IconArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+          <div className="h-[180px] flex items-end gap-3 px-1">
+            {REVENUE_LAST_7.map((d) => (
+              <div key={d.label} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                <div
+                  className={`w-full rounded-md ${d.highlight ? 'bg-nep-rose' : 'bg-nep-green'}`}
+                  style={{ height: `${Math.max(18, (d.value / maxRev) * 100)}%` }}
+                />
+                <span className="text-[11px] text-nep-muted">{d.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-nep-muted">Doanh thu từ đơn đã xác nhận · Đơn vị: VNĐ</p>
+        </Card>
 
+        <Card className="p-5">
+          <div className="rounded-xl bg-[#f6ead8] px-4 py-3 mb-4">
+            <p className="text-[12px] text-[#8a5a28] font-medium flex items-center gap-2">
+              <img src="/assets/calendar-clock.svg" alt="" width={16} height={16} />
+              {preparing.length + pending.length} đơn có giờ dùng trong 48 giờ tới
+            </p>
+            <p className="mt-1 text-[11px] text-[#8a5a28]/80">
+              Đối chiếu lịch giao đã xác nhận. Không dùng giờ sử dụng làm giờ giao.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {priority.map((o) => (
+              <Link key={o.id} to={`/admin/orders/${o.id}`} className="flex items-center justify-between gap-2 py-1">
+                <div>
+                  <p className="text-[13px] font-medium text-nep-ink">{o.id}</p>
+                  <div className="mt-1">
+                    <StatusPill status={o.status} />
+                  </div>
+                </div>
+                <p className="text-[12px] text-nep-muted whitespace-nowrap">{o.desiredEatTime?.split(' · ').reverse().join(' · ') || '—'}</p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4">
+          <p className="text-[15px] font-medium text-nep-ink">Đơn hàng mới nhất</p>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-stone-700">
-            <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-bold uppercase text-3xs tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Mã Đơn</th>
-                <th className="py-3 px-4">Khách Hàng</th>
-                <th className="py-3 px-4">Thời Gian Khách Muốn Ăn</th>
-                <th className="py-3 px-4">Món Nem & Tùy Chọn Gia Vị</th>
-                <th className="py-3 px-4">Tổng Tiền</th>
-                <th className="py-3 px-4">Trạng Thái</th>
+          <table className="w-full text-left text-[13px]">
+            <thead>
+              <tr className="bg-[#eef2e8] text-nep-green">
+                <th className="font-medium px-5 py-3">Mã đơn</th>
+                <th className="font-medium px-5 py-3">Khách hàng</th>
+                <th className="font-medium px-5 py-3">Tổng tiền</th>
+                <th className="font-medium px-5 py-3">Khách dùng lúc</th>
+                <th className="font-medium px-5 py-3">Trạng thái</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
-              {orders.slice(0, 5).map((order) => (
-                <tr key={order.id} className="hover:bg-stone-50/80 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-red-700">
-                    #{order.id}
+            <tbody>
+              {latest.map((o) => (
+                <tr key={o.id} className="border-t border-nep-line">
+                  <td className="px-5 py-3.5">
+                    <Link to={`/admin/orders/${o.id}`} className="font-medium text-nep-ink hover:text-nep-rose">
+                      {o.id}
+                    </Link>
                   </td>
-                  <td className="py-3 px-4">
-                    <strong className="block text-stone-900">{order.customerName}</strong>
-                    <span className="text-stone-400 text-2xs">{order.phone}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-2xs font-semibold">
-                      <IconClock className="w-3 h-3 text-amber-700" />
-                      {order.desiredEatTime || 'Ăn ngay'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 space-y-1">
-                    {order.items?.map((item, idx) => (
-                      <div key={idx} className="text-2xs">
-                        <span className="font-semibold text-stone-900">{item.name}</span> (x{item.quantity})
-                        <div className="text-3xs text-stone-500 flex items-center gap-1">
-                          <span className="text-amber-800">Tỏi: {item.spices?.garlic}</span> | 
-                          <span className="text-red-700">Ớt: {item.spices?.chili}</span> | 
-                          <span className="text-emerald-800">Lá: {item.spices?.polyscias}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </td>
-                  <td className="py-3 px-4 font-black text-red-700 text-sm">
-                    {order.totalAmount?.toLocaleString('vi-VN')}đ
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2.5 py-1 rounded-md text-2xs font-bold uppercase tracking-wider ${
-                      order.status === 'Hoàn thành' 
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : order.status === 'Đang giao hàng'
-                          ? 'bg-blue-100 text-blue-800'
-                          : order.status === 'Đang ủ men'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {order.status}
-                    </span>
+                  <td className="px-5 py-3.5">{o.customerName}</td>
+                  <td className="px-5 py-3.5">{formatVnd(o.totalAmount)}</td>
+                  <td className="px-5 py-3.5 text-nep-muted">{o.desiredEatTime || '—'}</td>
+                  <td className="px-5 py-3.5">
+                    <StatusPill status={o.status} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
-
+      </Card>
     </div>
   );
 };
 
 export default AdminDashboard;
-

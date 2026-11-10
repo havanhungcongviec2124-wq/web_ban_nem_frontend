@@ -1,105 +1,128 @@
-import React from 'react';
-import { Outlet, NavLink, Link } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
-import { 
-  IconAdjustments, 
-  IconCart, 
-  IconUser, 
-  IconSparkles, 
-  IconCheck, 
-  IconArrowRight 
-} from '../../components/Icons';
+import React, { useMemo, useState } from 'react';
+import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
+import {
+  IconGrid,
+  IconBox,
+  IconLayers,
+  IconList,
+  IconPeople,
+  IconClipboard,
+  IconBell,
+} from './adminUi';
+
+const NAV = [
+  { to: '/admin', end: true, label: 'Tổng quan', icon: IconGrid },
+  { to: '/admin/products', label: 'Sản phẩm', icon: IconBox },
+  { to: '/admin/combos', label: 'Combo', icon: IconLayers },
+  { to: '/admin/categories', label: 'Danh mục', icon: IconList },
+  { to: '/admin/customers', label: 'Khách hàng', icon: IconPeople },
+  { to: '/admin/orders', label: 'Đơn hàng', icon: IconClipboard },
+];
+
+const PAGE_CRUMB = {
+  '/admin': 'Tổng quan',
+  '/admin/products': 'Sản phẩm',
+  '/admin/combos': 'Combo',
+  '/admin/categories': 'Danh mục',
+  '/admin/customers': 'Khách hàng',
+  '/admin/orders': 'Đơn hàng',
+};
+
+const weekdayVi = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
 const AdminLayout = () => {
-  const { orders } = useCart();
-  const pendingCount = orders.filter(o => o.status === 'Chờ xác nhận' || o.status === 'Đang ủ men').length;
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
 
+  const crumb = useMemo(() => {
+    if (location.pathname.startsWith('/admin/orders/')) return 'Đơn hàng';
+    return PAGE_CRUMB[location.pathname] || 'Quản trị';
+  }, [location.pathname]);
+
+  const today = useMemo(() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${weekdayVi[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }, []);
+
+  const navClass = ({ isActive }) =>
+    `flex items-center gap-3 rounded-xl px-3 h-11 text-[13px] ${
+      isActive ? 'bg-[#2d4d38] text-nep-cream font-medium' : 'text-nep-cream/75 hover:bg-white/5 hover:text-nep-cream'
+    }`;
+
+  const sidebar = (
+    <aside className="w-58 h-full shrink-0 bg-nep-footer text-nep-cream flex flex-col min-h-screen">
+      <div className="px-5 h-18 flex items-center gap-2.5">
+        <img src="/assets/leaf-light.svg" alt="" width={22} height={22} />
+        <span className="font-serif font-bold text-[22px] tracking-[-0.7px]">Nếp Nem</span>
+      </div>
+
+      <nav className="px-3 flex-1 space-y-0.5">
+        {NAV.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end} className={navClass} onClick={() => setOpen(false)}>
+            <item.icon />
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+      <div className="px-4 py-5 mt-auto border-t border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-[#3d6550] text-[11px] font-semibold flex items-center justify-center">
+            AN
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium leading-tight">An Nguyễn</p>
+            <p className="text-[11px] text-nep-cream/55 mt-0.5">Quản trị cửa hàng</p>
+          </div>
+        </div>
+        <Link to="/home" className="mt-4 flex items-center gap-2 text-[12px] text-nep-cream/70 hover:text-white">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            <path d="M9 22V12h6v10" />
+          </svg>
+          Xem cửa hàng
+        </Link>
+      </div>
+    </aside>
+  );
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col">
-      {/* Top Admin Bar */}
-      <header className="bg-stone-900 text-white border-b border-stone-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-700 text-white flex items-center justify-center font-black text-sm">
-              ZS
-            </div>
-            <div>
-              <span className="font-black text-sm sm:text-base tracking-tight block">
-                CỔNG QUẢN TRỊ ADMIN - NEM CHUA ZS
-              </span>
-              <span className="text-3xs text-emerald-400 font-semibold">
-                ● Hệ thống hoạt động bình thường (Dữ liệu Frontend)
-              </span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-nep-cream flex text-nep-ink">
+      <div className="hidden lg:block">{sidebar}</div>
+      {open && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button className="absolute inset-0 bg-black/40" aria-label="Đóng menu" onClick={() => setOpen(false)} />
+          <div className="relative h-full w-58">{sidebar}</div>
+        </div>
+      )}
 
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="h-18 px-4 sm:px-8 flex items-center justify-between bg-nep-cream border-b border-nep-line/70">
           <div className="flex items-center gap-3">
-            <Link
-              to="/home"
-              className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-stone-200 transition-colors flex items-center gap-1.5"
+            <button
+              type="button"
+              className="lg:hidden h-10 w-10 rounded-xl border border-nep-line bg-nep-paper text-nep-green"
+              onClick={() => setOpen(true)}
+              aria-label="Mở menu"
             >
-              <span>← Về Website Bán Hàng</span>
-            </Link>
+              ☰
+            </button>
+            <p className="text-[13px] text-nep-muted">
+              Quản trị cửa hàng <span className="text-nep-line mx-1">/</span> {crumb}
+            </p>
           </div>
+          <div className="flex items-center gap-4 text-[13px] text-nep-muted">
+            <span className="hidden sm:inline">{today}</span>
+            <span className="text-nep-green">
+              <IconBell />
+            </span>
+          </div>
+        </header>
+        <div className="flex-1 px-4 sm:px-8 py-7">
+          <Outlet />
         </div>
-      </header>
-
-      {/* Main Admin Content Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-stone-200 pb-4 mb-6 overflow-x-auto">
-          <NavLink
-            to="/admin"
-            end
-            className={({ isActive }) =>
-              `px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
-                isActive
-                  ? 'bg-red-700 text-white shadow-xs'
-                  : 'bg-white text-stone-700 hover:bg-stone-200 border border-stone-200'
-              }`
-            }
-          >
-            📊 Tổng Quan Dashboard
-          </NavLink>
-
-          <NavLink
-            to="/admin/orders"
-            className={({ isActive }) =>
-              `px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                isActive
-                  ? 'bg-red-700 text-white shadow-xs'
-                  : 'bg-white text-stone-700 hover:bg-stone-200 border border-stone-200'
-              }`
-            }
-          >
-            <span>📦 Quản Lý Đơn Hàng & Gia Vị</span>
-            {pendingCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-stone-900 text-2xs font-black">
-                {pendingCount}
-              </span>
-            )}
-          </NavLink>
-
-          <NavLink
-            to="/admin/products"
-            className={({ isActive }) =>
-              `px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
-                isActive
-                  ? 'bg-red-700 text-white shadow-xs'
-                  : 'bg-white text-stone-700 hover:bg-stone-200 border border-stone-200'
-              }`
-            }
-          >
-            🥩 Quản Lý Sản Phẩm & Combo
-          </NavLink>
-        </div>
-
-        {/* Child Views */}
-        <Outlet />
       </div>
     </div>
   );
 };
 
 export default AdminLayout;
-
