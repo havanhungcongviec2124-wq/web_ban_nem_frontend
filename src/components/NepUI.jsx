@@ -38,9 +38,11 @@ export const SpiceChoice = ({ label, value, onChange }) => (
   </div>
 );
 
-export const QtyControl = ({ value, onMinus, onPlus }) => (
-  <div className="border border-nep-line rounded-lg h-12 px-3.5 flex items-center gap-5">
-    <button type="button" onClick={onMinus} aria-label="Giảm">
+export const QtyControl = ({ value, onMinus, onPlus, frame = true }) => (
+  <div
+    className={`flex items-center ${frame ? 'border border-nep-line rounded-lg h-12 px-3.5 gap-5' : 'gap-4'}`}
+  >
+    <button type="button" onClick={onMinus} aria-label="Giảm" className={value <= 1 ? 'opacity-40' : ''}>
       <img src="/assets/minus-qty.svg" alt="" width={15} height={15} />
     </button>
     <span className="text-[14px] font-medium text-nep-ink min-w-[1ch] text-center">{value}</span>

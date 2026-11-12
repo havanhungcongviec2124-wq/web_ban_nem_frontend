@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchCombos, updateCombo, createCombo, deleteCombo } from '../../redux/combo/ComboApi';
-import { fetchProducts } from '../../redux/product/ProductApi';
+import { fetchProducts, uploadProductImage } from '../../redux/product/ProductApi';
 import { useCart } from '../../context/CartContext';
 import {
   Card,
@@ -13,6 +13,20 @@ import {
   Select,
   formatVnd,
 } from './adminUi';
+
+const DEFAULT_COMBO_IMAGE = '/assets/combo-sum-vay.png';
+
+const blankCombo = {
+  name: '',
+  sku: '',
+  price: 250000,
+  originalPrice: 280000,
+  image: DEFAULT_COMBO_IMAGE,
+  shortDesc: 'Sự kết hợp tinh túy của các món nem chua đặc sản xứ Thanh.',
+  badge: 'Mới ra mắt',
+  status: 'Đang bán',
+  comboItems: [],
+};
 
 const AdminCombos = () => {
   const dispatch = useDispatch();
@@ -36,17 +50,38 @@ const AdminCombos = () => {
   }, [list, selectedId]);
 
   // Form state cho combo mới
-  const [newCombo, setNewCombo] = useState({
-    name: '',
-    sku: '',
-    price: 250000,
-    originalPrice: 280000,
-    image: '/assets/combo-sum-vay.png',
-    shortDesc: 'Sự kết hợp tinh túy của các món nem chua đặc sản xứ Thanh.',
-    badge: 'Mới ra mắt',
-    status: 'Đang bán',
-    comboItems: [],
+  const [newCombo, setNewCombo] = useState({ ...blankCombo, comboItems: [] });
+
+  // Ảnh đại diện combo mới: { url } nếu đang dùng ảnh có sẵn,
+  // hoặc { file, preview } nếu người dùng vừa chọn ảnh mới (chưa tải lên)
+  const [newImage, setNewImage] = useState({
+    url: DEFAULT_COMBO_IMAGE,
+    preview: DEFAULT_COMBO_IMAGE,
+    file: null,
   });
+
+  const resetNewCombo = () => {
+    setNewImage((prev) => {
+      if (prev.preview?.startsWith('blob:')) URL.revokeObjectURL(prev.preview);
+      return { url: DEFAULT_COMBO_IMAGE, preview: DEFAULT_COMBO_IMAGE, file: null };
+    });
+    setNewCombo({ ...blankCombo, comboItems: [] });
+  };
+
+  const startCreateCombo = () => {
+    resetNewCombo();
+    setShowCreateModal(true);
+  };
+
+  const handleNewImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setNewImage((prev) => {
+      if (prev.preview?.startsWith('blob:')) URL.revokeObjectURL(prev.preview);
+      return { file, url: null, preview: URL.createObjectURL(file) };
+    });
+    e.target.value = '';
+  };
 
   const selected = useMemo(() => {
     return list.find((c) => (c.slug || c.id || c._id) === selectedId) || list[0] || null;
@@ -104,6 +139,48 @@ const AdminCombos = () => {
     });
   };
 
+  const addProductToNewCombo = (prodId) => {
+    const p = products.find((prod) => (prod.slug || prod.id || prod._id) === prodId);
+    if (!p) return;
+    const slug = p.slug || p.id || p._id;
+    setNewCombo((prev) => {
+      if (prev.comboItems.some((i) => i.productSlug === slug)) return prev;
+      return {
+        ...prev,
+        comboItems: [
+          ...prev.comboItems,
+          {
+            productSlug: slug,
+            name: p.name,
+            qty: 1,
+            qtyLabel: '1 gói',
+            image: p.image,
+            defaultSpices: p.defaultSpices,
+          },
+        ],
+      };
+    });
+  };
+
+  const patchNewComboItem = (index, partial) => {
+    setNewCombo((prev) => ({
+      ...prev,
+      comboItems: prev.comboItems.map((item, i) => {
+        if (i !== index) return item;
+        const next = { ...item, ...partial };
+        if (partial.qty !== undefined) next.qtyLabel = `${partial.qty} gói`;
+        return next;
+      }),
+    }));
+  };
+
+  const removeNewComboItem = (index) => {
+    setNewCombo((prev) => ({
+      ...prev,
+      comboItems: prev.comboItems.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleSaveConfig = async () => {
     if (!editState) return;
     const targetId = editState.slug || editState.id || editState._id;
@@ -121,10 +198,29 @@ const AdminCombos = () => {
       alert('Vui lòng nhập tên combo!');
       return;
     }
+    if (newCombo.comboItems.length < 2) {
+      alert('Combo cần chọn từ 2 sản phẩm trở lên!');
+      return;
+    }
+
+    // Tải ảnh đại diện lên server nếu người dùng chọn file mới
+    let image = newImage.url || DEFAULT_COMBO_IMAGE;
+    if (newImage.file) {
+      const up = await dispatch(uploadProductImage(newImage.file));
+      if (uploadProductImage.fulfilled.match(up)) {
+        image = up.payload;
+      } else {
+        showToast(up.payload || 'Tải ảnh thất bại!');
+        return;
+      }
+    }
+
     const createdSlug = `combo-${Date.now()}`;
     const comboToAdd = {
       ...newCombo,
       slug: createdSlug,
+      image,
+      gallery: [image],
       sku: newCombo.sku || `CB-${Math.floor(1000 + Math.random() * 9000)}`,
       price: Number(newCombo.price) || 200000,
       originalPrice: Number(newCombo.originalPrice) || Number(newCombo.price) + 30000,
@@ -136,7 +232,7 @@ const AdminCombos = () => {
       setSelectedId(res.payload.slug || res.payload.id || res.payload._id);
       setShowCreateModal(false);
     } else {
-      showToast('Lỗi khi tạo combo!');
+      showToast(res.payload || 'Lỗi khi tạo combo!');
     }
   };
 
@@ -170,7 +266,7 @@ const AdminCombos = () => {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <SearchInput value={query} onChange={setQuery} placeholder="Tìm tên hoặc mã combo..." />
-        <PrimaryButton onClick={() => setShowCreateModal(true)} className="shrink-0 cursor-pointer">
+        <PrimaryButton onClick={startCreateCombo} className="shrink-0 cursor-pointer">
           + Tạo combo mới
         </PrimaryButton>
       </div>
@@ -368,11 +464,26 @@ const AdminCombos = () => {
               </div>
 
               <div>
-                <FieldLabel>Ảnh combo (URL hoặc asset)</FieldLabel>
-                <Input
-                  value={newCombo.image}
-                  onChange={(e) => setNewCombo({ ...newCombo, image: e.target.value })}
-                />
+                <FieldLabel>Ảnh combo (ảnh đại diện)</FieldLabel>
+                <div className="flex items-start gap-3">
+                  <img
+                    src={newImage.preview}
+                    alt=""
+                    className="w-24 h-24 shrink-0 rounded-xl object-cover border border-nep-line bg-white"
+                  />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <label className="inline-flex items-center justify-center h-10 px-3.5 rounded-xl border border-nep-line bg-nep-paper text-nep-green text-[13px] font-medium hover:bg-nep-mint cursor-pointer">
+                      Chọn ảnh
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/gif,image/webp,image/avif"
+                        className="hidden"
+                        onChange={handleNewImageChange}
+                      />
+                    </label>
+                    <p className="text-[11px] text-nep-muted">PNG, JPG, GIF, WEBP · tối đa 5MB</p>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -381,6 +492,85 @@ const AdminCombos = () => {
                   value={newCombo.shortDesc}
                   onChange={(e) => setNewCombo({ ...newCombo, shortDesc: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <FieldLabel required>Sản phẩm trong combo (từ 2 món trở lên)</FieldLabel>
+                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                  {newCombo.comboItems.map((item, idx) => (
+                    <div key={`${item.productSlug}-${idx}`} className="rounded-xl bg-[#eef3e8] p-3">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={item.image || '/assets/nem-truyen-thong.png'}
+                          alt=""
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium text-nep-green truncate">{item.name}</p>
+                          <p className="text-[11px] text-nep-muted mt-0.5">
+                            {formatVnd(
+                              products.find((p) => (p.slug || p.id || p._id) === item.productSlug)?.price || 0
+                            )}{' '}
+                            / gói
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-stone-400 hover:text-nep-rose p-1 text-base leading-none"
+                          onClick={() => removeNewComboItem(idx)}
+                          title="Xóa món này khỏi combo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between">
+                        <span className="text-[12px] text-nep-muted">Số gói / combo</span>
+                        <div className="flex items-center gap-2 border border-nep-line rounded-lg bg-white h-8 px-2">
+                          <button
+                            type="button"
+                            className="px-1 font-bold text-nep-ink hover:text-nep-rose"
+                            onClick={() => patchNewComboItem(idx, { qty: Math.max(1, (item.qty || 1) - 1) })}
+                          >
+                            −
+                          </button>
+                          <span className="w-5 text-center text-[13px]">{item.qty || 1}</span>
+                          <button
+                            type="button"
+                            className="px-1 font-bold text-nep-ink hover:text-nep-green"
+                            onClick={() => patchNewComboItem(idx, { qty: (item.qty || 1) + 1 })}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {newCombo.comboItems.length < 2 && (
+                    <p className="text-[12px] text-nep-muted">
+                      {newCombo.comboItems.length === 0
+                        ? 'Chưa chọn món nào.'
+                        : 'Cần chọn thêm ít nhất 1 món nữa.'}{' '}
+                      Combo phải có từ 2 sản phẩm trở lên.
+                    </p>
+                  )}
+                </div>
+                <Select
+                  className="mt-2.5"
+                  defaultValue=""
+                  onChange={(e) => {
+                    addProductToNewCombo(e.target.value);
+                    e.target.value = '';
+                  }}
+                >
+                  <option value="" disabled>
+                    + Thêm sản phẩm vào combo
+                  </option>
+                  {products.map((p) => (
+                    <option key={p.slug || p.id || p._id} value={p.slug || p.id || p._id}>
+                      {p.name} ({formatVnd(p.price)})
+                    </option>
+                  ))}
+                </Select>
               </div>
 
               <div className="pt-3 border-t border-nep-line flex items-center justify-end gap-3">

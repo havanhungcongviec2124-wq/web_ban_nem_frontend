@@ -1,13 +1,32 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchCart, syncCartThunk } from './CartApi';
 
-// Khôi phục giỏ hàng từ localStorage nếu có
+const DEFAULT_SPICES = { garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' };
+
+// Chuẩn hóa món con trong combo: luôn có spices + qtyText
+// (combo từ backend chỉ có defaultSpices, không có spices → Cart/Checkout đọc sub.spices.garlic bị crash)
+const normalizeSubItems = (subs) => {
+  if (!Array.isArray(subs)) return null;
+  return subs.map((sub) => ({
+    ...sub,
+    qtyText: sub.qtyText || sub.qtyLabel || (sub.qty ? `${sub.qty} phần` : ''),
+    spices: sub.spices || sub.defaultSpices || { ...DEFAULT_SPICES },
+  }));
+};
+
+// Khôi phục giỏ hàng từ localStorage nếu có (chuẩn hóa lại cho giỏ tạo trước khi có fix)
 const loadSavedCart = () => {
   try {
     const saved = localStorage.getItem('zs_cart');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => ({
+          ...item,
+          spices: item.spices || { ...DEFAULT_SPICES },
+          comboSubItems: item.comboSubItems ? normalizeSubItems(item.comboSubItems) : item.comboSubItems,
+        }));
+      }
     }
     return [];
   } catch {
@@ -50,11 +69,7 @@ const cartSlice = createSlice({
         note = '',
       } = action.payload;
 
-      const finalSpices = spices || product.defaultSpices || {
-        garlic: 'Nhiều',
-        chili: 'Ít',
-        polyscias: 'Nhiều',
-      };
+      const finalSpices = spices || product.defaultSpices || { ...DEFAULT_SPICES };
 
       const isCombo = product.id === 'combo-sum-vay' || product.category === 'combo' || product.isCombo;
       const spiceKey = isCombo
@@ -84,7 +99,7 @@ const cartSlice = createSlice({
           eatTime,
           note,
           isCombo,
-          comboSubItems: isCombo ? (product.comboSubItems || product.comboItems || null) : null,
+          comboSubItems: isCombo ? normalizeSubItems(product.comboSubItems || product.comboItems) : null,
         });
       }
 

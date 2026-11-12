@@ -20,6 +20,7 @@ import {
   createOrderThunk,
   updateOrderStatusThunk,
 } from '../redux/order/OrderApi';
+import { clearMyOrders } from '../redux/order/OrderSlice';
 
 // Danh sách mã giảm giá chính thức
 export const VOUCHERS = [
@@ -37,18 +38,24 @@ export const CartProvider = ({ children }) => {
   const spiceModalProduct = useSelector((state) => state.cart.spiceModalProduct);
   const toastMessage = useSelector((state) => state.cart.toastMessage);
   const orders = useSelector((state) => state.orders.items);
-  const { isAuthenticated, isAdmin } = useSelector((state) => state.auth);
+  const myOrders = useSelector((state) => state.orders.myOrders);
+  const { isAuthenticated, isAdmin, user: authUser } = useSelector((state) => state.auth);
+  const authUserId = authUser?.id || null;
 
-  // Tải đơn hàng thực tế từ backend khi đã đăng nhập
+  // Tải đơn hàng thực tế từ backend khi đã đăng nhập.
+  // Phụ thuộc cả id người dùng để refetch khi đổi tài khoản (đăng ký/đăng nhập user khác)
   useEffect(() => {
-    if (isAuthenticated) {
-      if (isAdmin) {
-        dispatch(fetchOrders());
-      } else {
-        dispatch(fetchMyOrders());
-      }
+    if (!isAuthenticated) {
+      dispatch(clearMyOrders());
+      return;
     }
-  }, [dispatch, isAuthenticated, isAdmin]);
+    if (isAdmin) {
+      dispatch(fetchOrders());
+    } else {
+      dispatch(clearMyOrders());
+      dispatch(fetchMyOrders());
+    }
+  }, [dispatch, isAuthenticated, isAdmin, authUserId]);
 
   // Tự tắt Toast sau 3.5s
   useEffect(() => {
@@ -104,6 +111,9 @@ export const CartProvider = ({ children }) => {
     dispatch(clearCartAction());
   };
 
+  // Số "đơn" (dòng hàng) trong giỏ — dùng cho badge icon giỏ ở Header
+  const cartCount = cart.length;
+  // Tổng số phần theo số lượng từng dòng (combo ×1 + nem ×2 = 3 phần)
   const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
   const totalPrice = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
 
@@ -140,7 +150,7 @@ export const CartProvider = ({ children }) => {
       note: orderInfo.note,
       paymentMethod: orderInfo.paymentMethod?.includes('COD') ? 'COD' : 'bank_transfer',
       items: cart.map((it) => ({
-        productSlug: it.productSlug || it.id || 'nem-chua-truyen-thong',
+        productSlug: it.productSlug || it.id || '',
         name: it.name,
         image: it.image,
         pack: it.pack,
@@ -199,6 +209,7 @@ export const CartProvider = ({ children }) => {
         updateComboSubSpices,
         removeFromCart,
         clearCart,
+        cartCount,
         totalItems,
         totalPrice,
         shippingFee,
@@ -213,6 +224,7 @@ export const CartProvider = ({ children }) => {
         toastMessage,
         showToast,
         orders,
+        myOrders,
         createOrder,
         updateOrderStatus,
       }}

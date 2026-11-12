@@ -17,12 +17,12 @@ import {
 
 const spiceShort = (spices) => {
   if (!spices) return '';
-  return `Tỏi: ${spices.garlic} · Ớt: ${spices.chili} · Đinh lăng: ${spices.polyscias}`;
+  return `Tỏi: ${spices.garlic || 'Nhiều'} · Ớt: ${spices.chili || 'Ít'} · Đinh lăng: ${spices.polyscias || 'Nhiều'}`;
 };
 
 const AdminOrderDetail = () => {
   const { orderId } = useParams();
-  const { orders, updateOrderStatus, updateOrder } = useCart();
+  const { orders, updateOrderStatus } = useCart();
   const order = orders.find((o) => o.id === orderId);
   const [assignee, setAssignee] = useState(order?.assignee || '');
   const [scheduleNote, setScheduleNote] = useState(order?.scheduleNote || '');
@@ -42,15 +42,29 @@ const AdminOrderDetail = () => {
   const itemsSubtotal = (order.items || []).reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
   const subtotal = order.subtotal ?? itemsSubtotal;
   const shipping = order.shippingFee ?? 30000;
-  const sameProductTwice =
-    (order.items || []).filter((i) => i.id === 'nem-chua-truyen-thong' && !i.isCombo).length >= 2;
+  // Cảnh báo khi cùng một món (khác gia vị) xuất hiện trên nhiều dòng đơn
+  const nonComboSlugs = (order.items || [])
+    .filter((i) => !i.isCombo)
+    .map((i) => i.productSlug || i.id || i.name);
+  const sameProductTwice = nonComboSlugs.some(
+    (slug) => nonComboSlugs.filter((s) => s === slug).length >= 2
+  );
+
+  // Luồng thao tác của admin theo trạng thái đơn
+  const NEXT_STEP = {
+    'Chờ xác nhận': { label: 'Xác nhận đơn', next: 'Đang chuẩn bị' },
+    'Đang chuẩn bị': { label: 'Bắt đầu giao hàng', next: 'Đang giao' },
+    'Đang giao': { label: 'Hoàn tất giao hàng', next: 'Hoàn tất' },
+  };
+  const nextStep = NEXT_STEP[status];
 
   const confirmOrder = () => {
-    if (status === 'Chờ xác nhận') updateOrderStatus(order.id, 'Đang chuẩn bị');
+    if (nextStep) updateOrderStatus(order.id, nextStep.next);
   };
 
   const saveDelivery = () => {
-    updateOrder(order.id, { assignee, scheduleNote });
+    // Lưu thông tin giao hàng (người giao, lịch đã thống nhất) xuống backend
+    updateOrderStatus(order.id, { assignee, scheduleNote });
   };
 
   return (
@@ -72,7 +86,17 @@ const AdminOrderDetail = () => {
         </div>
         <div className="flex gap-2">
           <GhostButton onClick={() => window.print()}>In phiếu</GhostButton>
-          {status === 'Chờ xác nhận' && <PrimaryButton onClick={confirmOrder}>Xác nhận đơn</PrimaryButton>}
+          {nextStep && <PrimaryButton onClick={confirmOrder}>{nextStep.label}</PrimaryButton>}
+          {status === 'Hoàn tất' && (
+            <span className="inline-flex items-center rounded-full bg-nep-green/10 text-nep-green text-[13px] font-medium px-4">
+              Đơn đã hoàn tất ✓
+            </span>
+          )}
+          {status === 'Đã hủy' && (
+            <span className="inline-flex items-center rounded-full bg-nep-rose/10 text-nep-rose text-[13px] font-medium px-4">
+              Đơn đã bị hủy
+            </span>
+          )}
         </div>
       </div>
 
@@ -92,7 +116,7 @@ const AdminOrderDetail = () => {
           <Card className="p-5">
             <p className="font-medium text-[15px] text-nep-ink">Sản phẩm & gia vị cần chuẩn bị</p>
             <p className="text-[12px] text-nep-muted mt-1">
-              {order.lineCount || order.items?.length} dòng mua · {order.packCount || order.items?.reduce((s, i) => s + (i.quantity || 1), 0)} phần đặt
+              {order.lineCount || order.items?.length} dòng mua · {order.items?.reduce((s, i) => s + (i.quantity || 1), 0)} phần đặt
               {order.pieceCount ? ` · Tổng ${order.pieceCount} chiếc / ${order.weightLabel}` : ''}
             </p>
 

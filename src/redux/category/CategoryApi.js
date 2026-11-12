@@ -36,12 +36,12 @@ export const fetchCategories = createAsyncThunk(
   }
 );
 
-// Lấy tất cả danh mục (Admin - bao gồm cả ẩn)
+// Lấy tất cả danh mục (Admin - bao gồm cả ẩn) — GET /api/categories/all
 export const fetchAllCategoriesAdmin = createAsyncThunk(
   'categories/fetchAllCategoriesAdmin',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${BASE_URL}/admin/all`, {
+      const res = await fetch(`${BASE_URL}/all`, {
         headers: getAuthHeaders(),
       });
       const data = await res.json();

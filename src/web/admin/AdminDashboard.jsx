@@ -1,17 +1,78 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { useCart } from '../../context/CartContext';
-import { REVENUE_LAST_7 } from '../../data/mockData';
+import { fetchUsers } from '../../redux/auth/AuthApi';
 import { Card, PageTitle, StatusPill, formatVnd, normalizeStatus } from './adminUi';
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Doanh thu 7 ngày gần nhất tính từ createdAt & totalAmount THẬT của đơn hàng trong database
+const buildRevenueLast7 = (orders) => {
+  const days = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    dayStart.setDate(dayStart.getDate() - i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const dayOrders = orders.filter((o) => {
+      const t = o.createdAtISO ? new Date(o.createdAtISO) : null;
+      return t && !Number.isNaN(t.getTime()) && t >= dayStart && t < dayEnd;
+    });
+
+    days.push({
+      label: `${pad2(dayStart.getDate())}/${pad2(dayStart.getMonth() + 1)}`,
+      value: dayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
+      orderCount: dayOrders.length,
+      highlight: i === 0,
+    });
+  }
+  return days;
+};
+
 const AdminDashboard = () => {
+  const dispatch = useDispatch();
   const { orders } = useCart();
+  const users = useSelector((state) => state.auth.users);
+
+  // Tải danh sách người dùng thực từ backend để thống kê khách hàng
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
   const pending = orders.filter((o) => normalizeStatus(o.status) === 'Chờ xác nhận');
   const preparing = orders.filter((o) => normalizeStatus(o.status) === 'Đang chuẩn bị');
   const latest = orders.slice(0, 4);
-  const maxRev = Math.max(...REVENUE_LAST_7.map((d) => d.value));
-  const weekTotal = REVENUE_LAST_7.reduce((s, d) => s + d.value, 0);
-  const todayRev = REVENUE_LAST_7[REVENUE_LAST_7.length - 1]?.value || 0;
+
+  const revenueLast7 = useMemo(() => buildRevenueLast7(orders), [orders]);
+  const maxRev = Math.max(...revenueLast7.map((d) => d.value), 1);
+  const weekTotal = revenueLast7.reduce((s, d) => s + d.value, 0);
+  const today = revenueLast7[revenueLast7.length - 1] || { value: 0, orderCount: 0 };
+  const yesterday = revenueLast7[revenueLast7.length - 2] || { value: 0 };
+  const todayRev = today.value;
+  const todayOrders = today.orderCount;
+  // So sánh doanh thu hôm nay với hôm qua (chỉ hiển thị khi hôm qua có doanh thu)
+  const revTrend =
+    yesterday.value > 0
+      ? `${todayRev >= yesterday.value ? '↑' : '↓'} ${Math.abs(
+          Math.round(((todayRev - yesterday.value) / yesterday.value) * 100)
+        )}% so với hôm qua`
+      : 'Chưa có dữ liệu hôm qua';
+
+  const newUsersToday = users.filter((u) => {
+    if (!u.createdAt) return false;
+    const t = new Date(u.createdAt);
+    const now = new Date();
+    return (
+      !Number.isNaN(t.getTime()) &&
+      t.getDate() === now.getDate() &&
+      t.getMonth() === now.getMonth() &&
+      t.getFullYear() === now.getFullYear()
+    );
+  }).length;
+
   const priority = orders.filter((o) => {
     const st = normalizeStatus(o.status);
     return st === 'Chờ xác nhận' || st === 'Đang chuẩn bị';
@@ -20,16 +81,20 @@ const AdminDashboard = () => {
   return (
     <div>
       <PageTitle
-        title="Chào An, một ngày thật đậm đà."
-        subtitle="Theo dõi bán hàng, chuẩn bị đơn và những bữa vui sắp tới."
+        title="Một ngày thật đậm đà."
+        subtitle="Theo dõi bán hàng, chuẩn bị đơn và những bữa vui sắp tới — dữ liệu thực từ hệ thống."
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
         {[
-          { label: 'Doanh thu hôm nay', value: formatVnd(todayRev), hint: '↑ 12% so với hôm qua' },
+          {
+            label: 'Doanh thu hôm nay',
+            value: formatVnd(todayRev),
+            hint: `${revTrend} · ${todayOrders} đơn`,
+          },
           { label: 'Đơn hàng mới', value: String(orders.length), hint: `${pending.length} đơn đang chờ xác nhận` },
           { label: 'Cần chuẩn bị', value: String(preparing.length), hint: 'Theo ngày sử dụng của khách' },
-          { label: 'Khách hàng mới', value: '9', hint: 'Trong tổng 21 khách hôm nay' },
+          { label: 'Khách hàng mới', value: String(newUsersToday), hint: `Trong tổng ${users.length} khách hàng` },
         ].map((s) => (
           <Card key={s.label} className="px-5 py-5">
             <p className="text-[13px] text-nep-muted">{s.label}</p>
@@ -46,20 +111,25 @@ const AdminDashboard = () => {
               <p className="text-[15px] font-medium text-nep-ink">Doanh thu 7 ngày gần đây</p>
               <p className="mt-2 font-serif text-[28px] leading-none text-nep-ink">{formatVnd(weekTotal)}</p>
             </div>
-            <p className="text-[12px] text-nep-muted">{REVENUE_LAST_7[0].label}–{REVENUE_LAST_7.at(-1).label}</p>
+            <p className="text-[12px] text-nep-muted">
+              {revenueLast7[0].label}–{revenueLast7[revenueLast7.length - 1].label}
+            </p>
           </div>
           <div className="h-[180px] flex items-end gap-3 px-1">
-            {REVENUE_LAST_7.map((d) => (
+            {revenueLast7.map((d) => (
               <div key={d.label} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
                 <div
                   className={`w-full rounded-md ${d.highlight ? 'bg-nep-rose' : 'bg-nep-green'}`}
                   style={{ height: `${Math.max(18, (d.value / maxRev) * 100)}%` }}
+                  title={`${d.orderCount} đơn · ${formatVnd(d.value)}`}
                 />
                 <span className="text-[11px] text-nep-muted">{d.label}</span>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-nep-muted">Doanh thu từ đơn đã xác nhận · Đơn vị: VNĐ</p>
+          <p className="mt-3 text-[11px] text-nep-muted">
+            Doanh thu theo ngày tạo đơn (dữ liệu thực từ backend) · Đơn vị: VNĐ
+          </p>
         </Card>
 
         <Card className="p-5">
@@ -119,6 +189,13 @@ const AdminDashboard = () => {
                   </td>
                 </tr>
               ))}
+              {latest.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-nep-muted">
+                    Chưa có đơn hàng nào trong hệ thống.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

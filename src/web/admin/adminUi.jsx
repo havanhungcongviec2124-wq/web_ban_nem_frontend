@@ -126,7 +126,7 @@ export const SpiceToggle = ({ label, value, onChange }) => (
 
 export const spiceLine = (spices) => {
   if (!spices) return '';
-  return `Tỏi: ${spices.garlic} · Ớt: ${spices.chili} · Đinh lăng: ${spices.polyscias}`;
+  return `Tỏi: ${spices.garlic || 'Nhiều'} · Ớt: ${spices.chili || 'Ít'} · Đinh lăng: ${spices.polyscias || 'Nhiều'}`;
 };
 
 export const IconGrid = () => (

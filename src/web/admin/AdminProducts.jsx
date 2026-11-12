@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../../redux/product/ProductApi';
-import { fetchCategories } from '../../redux/category/CategoryApi';
+import { fetchProducts, createProduct, updateProduct, deleteProduct, uploadProductImage } from '../../redux/product/ProductApi';
+import { fetchCategories, createCategory } from '../../redux/category/CategoryApi';
 import { useCart } from '../../context/CartContext';
 import {
   Card,
@@ -31,6 +31,34 @@ const blank = {
   defaultSpices: { garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' },
 };
 
+// Giá trị option "Khác" trong danh sách danh mục
+const NEW_CATEGORY = '__new__';
+
+// Tạo slug không dấu từ tên tiếng Việt
+const slugify = (text) =>
+  String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+// Đổi sản phẩm thành danh sách ảnh cho form: dùng gallery nếu có,
+// ngược lại chỉ có ảnh đại diện. Nếu image (ảnh đại diện) chưa nằm trong
+// gallery (sản phẩm lưu từ phiên bản cũ) thì đưa lên đầu để không bị mất
+const imagesFromProduct = (p) => {
+  const image = p?.image || '';
+  const gallery = Array.isArray(p?.gallery) ? p.gallery.filter(Boolean) : [];
+  let urls;
+  if (gallery.length) {
+    urls = image && !gallery.includes(image) ? [image, ...gallery] : gallery;
+  } else {
+    urls = image ? [image] : [];
+  }
+  return urls.map((url) => ({ url, preview: url }));
+};
+
 const AdminProducts = () => {
   const dispatch = useDispatch();
   const { showToast } = useCart();
@@ -52,6 +80,10 @@ const AdminProducts = () => {
   const [selectedId, setSelectedId] = useState('');
   const [form, setForm] = useState(blank);
   const [creating, setCreating] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  // Danh sách ảnh của sản phẩm: mỗi phần tử là { url } (ảnh đã có trên server)
+  // hoặc { file, preview } (ảnh vừa chọn, sẽ được tải lên khi lưu)
+  const [imageItems, setImageItems] = useState([]);
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -62,6 +94,7 @@ const AdminProducts = () => {
     if (list.length > 0 && !selectedId && !creating) {
       setSelectedId(list[0].id || list[0]._id);
       setForm({ ...list[0] });
+      applyImageItems(imagesFromProduct(list[0]));
     }
   }, [list, selectedId, creating]);
 
@@ -77,15 +110,55 @@ const AdminProducts = () => {
     setCreating(false);
     setSelectedId(p.id || p._id);
     setForm({ ...p });
+    setNewCategoryName('');
+    applyImageItems(imagesFromProduct(p));
   };
 
   const startCreate = () => {
     setCreating(true);
     setSelectedId('');
     setForm({ ...blank });
+    setNewCategoryName('');
+    applyImageItems([]);
+  };
+
+  // Đặt lại danh sách ảnh trong form (giải phóng blob preview cũ nếu có)
+  const applyImageItems = (items) => {
+    setImageItems((prev) => {
+      prev.forEach((it) => {
+        if (it.preview && it.preview.startsWith('blob:')) URL.revokeObjectURL(it.preview);
+      });
+      return items;
+    });
   };
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  // Cho phép chọn 1 hoặc nhiều ảnh cùng lúc — nối vào cuối danh sách
+  const handleImagesChange = (e) => {
+    const files = [...(e.target.files || [])];
+    if (!files.length) return;
+    setImageItems((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+    ]);
+    e.target.value = '';
+  };
+
+  const removeImage = (index) => {
+    setImageItems((prev) => {
+      const removed = prev[index];
+      if (removed?.preview?.startsWith('blob:')) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  // Option đang chọn của Select Danh mục: nếu danh mục của sản phẩm không còn
+  // trong danh sách (đã bị xóa / ẩn) thì hiển thị "Khác" cho dễ nhận biết
+  const selectValue =
+    form.category !== NEW_CATEGORY && cats.some((c) => (c.slug || c.id) === form.category)
+      ? form.category
+      : NEW_CATEGORY;
 
   const save = async () => {
     if (!form.name || !form.price) {
@@ -93,15 +166,68 @@ const AdminProducts = () => {
       return;
     }
 
+    // 1. Nếu chọn "Khác" — tạo danh mục mới trước khi lưu sản phẩm
+    //    (nếu tên trùng slug danh mục đã có thì dùng lại danh mục đó)
+    let category = form.category;
+    let categoryName = form.categoryName || '';
+    if (form.category === NEW_CATEGORY) {
+      const name = newCategoryName.trim();
+      if (!name) {
+        showToast('Vui lòng nhập tên danh mục mới!');
+        return;
+      }
+      const slug = slugify(name) || `danh-muc-${Date.now().toString().slice(-6)}`;
+      const existing = rawCats.find((c) => (c.slug || c.id) === slug);
+      if (existing) {
+        category = existing.slug || existing.id;
+        categoryName = existing.name;
+      } else {
+        const order = Math.max(0, ...rawCats.map((c) => Number(c.order) || 0)) + 1;
+        const res = await dispatch(createCategory({ name, slug, order }));
+        if (createCategory.fulfilled.match(res)) {
+          category = res.payload.slug || slug;
+          categoryName = res.payload.name || name;
+        } else {
+          showToast(res.payload || 'Tạo danh mục thất bại!');
+          return;
+        }
+      }
+    } else {
+      categoryName = cats.find((c) => (c.slug || c.id) === category)?.name || categoryName;
+    }
+
+    // 2. Tải các ảnh vừa chọn lên server (giữ đúng thứ tự đã sắp xếp)
+    const imageUrls = [];
+    for (const it of imageItems) {
+      if (it.url) {
+        imageUrls.push(it.url);
+        continue;
+      }
+      const up = await dispatch(uploadProductImage(it.file));
+      if (uploadProductImage.fulfilled.match(up)) {
+        imageUrls.push(up.payload);
+      } else {
+        showToast(up.payload || 'Tải ảnh thất bại!');
+        return;
+      }
+    }
+    // Ảnh đầu tiên là ảnh đại diện (dùng ở danh sách/giỏ hàng),
+    // gallery chứa tất cả ảnh để trang chi tiết hiển thị
+    const image = imageUrls[0] || blank.image;
+    const gallery = imageUrls;
+
     if (creating) {
       const slug = `nem-${Date.now().toString().slice(-4)}`;
       const item = {
         ...form,
         slug,
+        category,
+        categoryName,
+        image,
+        gallery,
         sku: form.sku || `NN-${Date.now().toString().slice(-3)}`,
         price: Number(form.price),
         stock: Number(form.stock) || 0,
-        categoryName: cats.find((c) => (c.slug || c.id) === form.category)?.name || 'Nem truyền thống',
       };
 
       const res = await dispatch(createProduct(item));
@@ -110,14 +236,22 @@ const AdminProducts = () => {
         setCreating(false);
         setSelectedId(res.payload.id || res.payload._id);
         setForm(res.payload);
+        setNewCategoryName('');
+        applyImageItems(imagesFromProduct(res.payload));
       } else {
-        showToast('Lỗi khi thêm sản phẩm!');
+        showToast(res.payload || 'Lỗi khi thêm sản phẩm!');
       }
       return;
     }
 
+    // Bỏ các trường tự sinh của Mongo để không ghi đè khi cập nhật
+    const { _id, id, createdAt, updatedAt, __v, ...rest } = form;
     const updated = {
-      ...form,
+      ...rest,
+      category,
+      categoryName,
+      image,
+      gallery,
       price: Number(form.price),
       stock: Number(form.stock) || 0,
     };
@@ -126,8 +260,10 @@ const AdminProducts = () => {
     const res = await dispatch(updateProduct({ id: targetId, data: updated }));
     if (updateProduct.fulfilled.match(res)) {
       showToast(`Đã cập nhật sản phẩm "${form.name}"!`);
+      setForm(res.payload);
+      applyImageItems(imagesFromProduct(res.payload));
     } else {
-      showToast('Lỗi khi cập nhật sản phẩm!');
+      showToast(res.payload || 'Lỗi khi cập nhật sản phẩm!');
     }
   };
 
@@ -219,11 +355,49 @@ const AdminProducts = () => {
             )}
           </div>
           {!creating && (
-            <div className="mb-4">
-              <span className="inline-flex items-center rounded-full bg-nep-mint text-nep-green text-[11px] px-2.5 py-1">Đang bán</span>
-              <img src={form.image} alt="" className="mt-3 w-full h-40 object-cover rounded-xl border border-nep-line" />
-            </div>
+            <span className="inline-flex items-center rounded-full bg-nep-mint text-nep-green text-[11px] px-2.5 py-1 mb-3">Đang bán</span>
           )}
+
+          <div className="mb-4">
+            <FieldLabel>Hình ảnh</FieldLabel>
+            <div className="grid grid-cols-3 gap-2">
+              {imageItems.map((it, i) => (
+                <div key={it.preview} className="relative">
+                  <img
+                    src={it.preview}
+                    alt=""
+                    className="w-full h-20 rounded-xl object-cover border border-nep-line bg-white"
+                  />
+                  {i === 0 && (
+                    <span className="absolute left-1 top-1 rounded-full bg-nep-green text-white text-[9px] font-medium px-1.5 py-0.5">
+                      Ảnh đại diện
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    title="Xóa ảnh này"
+                    className="absolute right-1 top-1 w-5 h-5 rounded-full bg-black/45 text-white text-[11px] leading-none flex items-center justify-center hover:bg-nep-rose"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <label className="h-20 rounded-xl border border-dashed border-nep-line bg-nep-paper text-nep-green text-[12px] font-medium hover:bg-nep-mint cursor-pointer flex items-center justify-center gap-1">
+                + Thêm ảnh
+                <input
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/avif"
+                  className="hidden"
+                  onChange={handleImagesChange}
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-[11px] text-nep-muted">
+              Chọn 1 hoặc nhiều ảnh · ảnh đầu tiên là ảnh đại diện · PNG, JPG, GIF, WEBP · tối đa 5MB mỗi ảnh
+            </p>
+          </div>
 
           <div className="space-y-3">
             <div>
@@ -242,14 +416,28 @@ const AdminProducts = () => {
             </div>
             <div>
               <FieldLabel required>Danh mục</FieldLabel>
-              <Select value={form.category} onChange={(e) => setField('category', e.target.value)}>
+              <Select value={selectValue} onChange={(e) => setField('category', e.target.value)}>
                 {cats.map((c) => (
                   <option key={c.slug || c.id} value={c.slug || c.id}>
                     {c.name}
                   </option>
                 ))}
+                <option value={NEW_CATEGORY}>Khác (danh mục mới)</option>
               </Select>
             </div>
+            {selectValue === NEW_CATEGORY && (
+              <div>
+                <FieldLabel required>Tên danh mục mới</FieldLabel>
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="VD: Nem chua cá basa"
+                />
+                <p className="mt-1.5 text-[11px] text-nep-muted">
+                  Danh mục sẽ được tạo mới khi bạn lưu sản phẩm.
+                </p>
+              </div>
+            )}
             <div>
               <FieldLabel>Quy cách</FieldLabel>
               <Input value={form.pack || ''} onChange={(e) => setField('pack', e.target.value)} />

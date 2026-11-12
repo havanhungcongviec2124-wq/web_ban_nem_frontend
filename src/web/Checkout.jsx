@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const formatVnd = (amount) => {
   return amount !== undefined && amount !== null
@@ -14,24 +15,34 @@ const inputClass = (hasError) =>
   }`;
 
 const Checkout = () => {
-  const { cart, finalPrice, totalPrice, shippingFee, createOrder, totalItems } = useCart();
+  const { cart, finalPrice, totalPrice, shippingFee, createOrder, totalItems, showToast } = useCart();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Pre-fill initial form data exactly as shown in the Figma screenshot
+  // Chưa đăng nhập thì chuyển đến trang đăng nhập (backend yêu cầu xác thực để tạo đơn)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để đặt hàng!');
+      navigate('/login?redirect=/checkout', { replace: true });
+    }
+  }, [isAuthenticated, navigate, showToast]);
+
+  // Form rỗng — tự động điền sẵn thông tin thật của tài khoản đang đăng nhập
   const [formData, setFormData] = useState({
-    customerName: 'Nguyễn Thùy Linh',
-    phone: '0900 000 128',
-    email: 'linh.nguyen@example.com',
+    customerName: user?.name || '',
+    phone: user?.phone || '',
+    email: user?.email || '',
     city: 'Hà Nội',
-    ward: 'Bồ Đề',
-    address: '24 ngõ Hoa',
-    eatDate: '08/11/2026',
-    eatTime: '18:30',
-    note: 'Gọi trước 20 phút, không bấm chuông. Nhà có em bé.',
+    ward: '',
+    address: '',
+    eatDate: '',
+    eatTime: '',
+    note: '',
     paymentMethod: 'COD', // 'COD' | 'BANK'
   });
 
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   if (cart.length === 0) {
     return (
@@ -69,16 +80,22 @@ const Checkout = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để đặt hàng!');
+      navigate('/login?redirect=/checkout');
+      return;
+    }
 
+    setSubmitting(true);
     const desiredEatTime = `${formData.eatDate} · ${formData.eatTime}`;
-    const newOrder = createOrder({
+    const result = await createOrder({
       customerName: formData.customerName.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
-      address: `${formData.address.trim()}, ${formData.ward}, ${formData.city}`,
+      address: `${formData.address.trim()}${formData.ward ? `, ${formData.ward}` : ''}, ${formData.city}`,
       desiredEatTime,
       note: formData.note.trim(),
       paymentMethod:
@@ -86,8 +103,12 @@ const Checkout = () => {
           ? 'Thanh toán khi nhận hàng (COD)'
           : 'Chuyển khoản ngân hàng',
     });
+    setSubmitting(false);
 
-    navigate(`/order-success/${newOrder.id}`);
+    // Chỉ chuyển hướng khi backend đã ghi nhận đơn hàng thật
+    if (result?.success && result.order?.id) {
+      navigate(`/order-success/${result.order.id}`);
+    }
   };
 
   return (
@@ -154,7 +175,7 @@ const Checkout = () => {
                       name="customerName"
                       value={formData.customerName}
                       onChange={handleChange}
-                      placeholder="Nguyễn Thùy Linh"
+                      placeholder="Nhập họ và tên"
                       className={inputClass(errors.customerName)}
                     />
                     {errors.customerName && (
@@ -171,7 +192,7 @@ const Checkout = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      placeholder="0900 000 128"
+                      placeholder="Nhập số điện thoại"
                       className={inputClass(errors.phone)}
                     />
                     {errors.phone && (
@@ -190,7 +211,7 @@ const Checkout = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="linh.nguyen@example.com"
+                    placeholder="email@example.com"
                     className={inputClass(false)}
                   />
                 </div>
@@ -229,7 +250,7 @@ const Checkout = () => {
                       name="ward"
                       value={formData.ward}
                       onChange={handleChange}
-                      placeholder="Bồ Đề"
+                      placeholder="Ví dụ: Bồ Đề"
                       className={inputClass(false)}
                     />
                   </div>
@@ -245,7 +266,7 @@ const Checkout = () => {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    placeholder="24 ngõ Hoa"
+                    placeholder="Số nhà, tên đường / ngõ"
                     className={inputClass(errors.address)}
                   />
                   {errors.address && (
@@ -255,7 +276,7 @@ const Checkout = () => {
 
                 {/* Bottom note */}
                 <p className="text-[11px] text-[#7a8072] pt-1">
-                  Phí giao hàng mẫu: 30.000 đ. Nếp xác nhận khả năng phục vụ và lịch giao sau khi nhận đơn.
+                  Phí giao hàng nội thành: 30.000 đ. Nếp xác nhận khả năng phục vụ và lịch giao sau khi nhận đơn.
                 </p>
               </div>
             </div>
@@ -288,7 +309,7 @@ const Checkout = () => {
                     name="eatDate"
                     value={formData.eatDate}
                     onChange={handleChange}
-                    placeholder="08/11/2026"
+                    placeholder="dd/mm/yyyy"
                     className={inputClass(errors.eatDate)}
                   />
                   {errors.eatDate && (
@@ -466,10 +487,10 @@ const Checkout = () => {
                               ? item.comboSubItems
                                   .map(
                                     (sub) =>
-                                      `${sub.name} — Tỏi: ${sub.spices.garlic}, Ớt: ${sub.spices.chili}, Đinh lăng: ${sub.spices.polyscias}`
+                                      `${sub.name} — Tỏi: ${sub.spices?.garlic || 'Nhiều'}, Ớt: ${sub.spices?.chili || 'Ít'}, Đinh lăng: ${sub.spices?.polyscias || 'Nhiều'}`
                                   )
                                   .join('; ')
-                              : 'Nem truyền thống — Tỏi: Ít, Ớt: Ít, Đinh lăng: Nhiều; Nem lá ổi — Tỏi: Nhiều, Ớt: Nhiều, Đinh lăng: Ít.'}
+                              : 'Xem chi tiết gia vị từng món trong giỏ hàng.'}
                           </p>
                         </div>
                       )}
@@ -507,15 +528,26 @@ const Checkout = () => {
 
               {/* Tax note */}
               <p className="text-[11px] text-[#8c9184] leading-relaxed">
-                Giá đã gồm thuế nếu có. Phí giao nội thành theo địa chỉ mẫu.
+                Giá đã gồm thuế nếu có. Phí giao nội thành mặc định 30.000 đ.
               </p>
 
               {/* Submit CTA */}
               <button
                 type="submit"
-                className="w-full bg-[#ad3c32] hover:bg-[#962f26] text-white font-medium text-[14px] py-3.5 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
+                disabled={submitting}
+                className="w-full bg-[#ad3c32] hover:bg-[#962f26] text-white font-medium text-[14px] py-3.5 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span>Đặt hàng · {formatVnd(finalPrice)}</span>
+                {submitting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <span>Đang gửi đơn hàng...</span>
+                  </>
+                ) : (
+                  <span>Đặt hàng · {formatVnd(finalPrice)}</span>
+                )}
               </button>
 
               {/* Policy note */}

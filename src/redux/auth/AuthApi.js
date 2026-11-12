@@ -38,7 +38,7 @@ export const loginUser = createAsyncThunk(
 // Đăng ký
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
-  async ({ name, email, phone, password, role }, { rejectWithValue }) => {
+  async ({ name, email, phone, password }, { rejectWithValue }) => {
     try {
       const res = await fetch(`${BASE_URL}/register`, {
         method: 'POST',
@@ -48,7 +48,6 @@ export const registerUser = createAsyncThunk(
           email: (email || '').trim(),
           phone: (phone || '').trim(),
           password: (password || '').trim(),
-          role: role === 'admin' ? 'admin' : 'user',
         }),
       });
       const data = await res.json();

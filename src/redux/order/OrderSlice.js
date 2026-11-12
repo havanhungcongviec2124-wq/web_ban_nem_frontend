@@ -18,6 +18,10 @@ const orderSlice = createSlice({
     clearOrderError(state) {
       state.error = null;
     },
+    clearMyOrders(state) {
+      // Xoá đơn cũ khi đổi tài khoản — tránh hiển thị đơn của người dùng trước
+      state.myOrders = [];
+    },
   },
   extraReducers: (builder) => {
     // Fetch Orders
@@ -74,6 +78,6 @@ const orderSlice = createSlice({
   },
 });
 
-export const { clearOrderError } = orderSlice.actions;
+export const { clearOrderError, clearMyOrders } = orderSlice.actions;
 export default orderSlice.reducer;
 

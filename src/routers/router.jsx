@@ -12,6 +12,7 @@ import News from "../web/News";
 import Contact from "../web/Contact";
 import Login from "../web/Login";
 import Register from "../web/Register";
+import MyOrders from "../web/MyOrders";
 import AdminLayout from "../web/admin/AdminLayout";
 import AdminDashboard from "../web/admin/AdminDashboard";
 import AdminOrders from "../web/admin/AdminOrders";
@@ -61,6 +62,10 @@ const router = createHashRouter([
       {
         path: "order-success/:orderId",
         element: <OrderSuccess />,
+      },
+      {
+        path: "my-orders",
+        element: <MyOrders />,
       },
       {
         path: "about",

@@ -5,8 +5,12 @@ import { Eyebrow, formatVnd } from '../components/NepUI';
 
 const OrderSuccess = () => {
   const { orderId } = useParams();
-  const { orders } = useCart();
-  const order = useMemo(() => orders.find((o) => o.id === orderId) || orders[0], [orders, orderId]);
+  const { orders, myOrders } = useCart();
+  const allOrders = useMemo(() => [...(orders || []), ...(myOrders || [])], [orders, myOrders]);
+  const order = useMemo(
+    () => allOrders.find((o) => o.id === orderId) || allOrders[0],
+    [allOrders, orderId]
+  );
 
   if (!order) {
     return (

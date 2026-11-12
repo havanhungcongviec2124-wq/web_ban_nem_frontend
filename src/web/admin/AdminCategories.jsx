@@ -38,6 +38,8 @@ const AdminCategories = () => {
   const [selectedId, setSelectedId] = useState('');
   const [form, setForm] = useState(blankCategory);
   const [creating, setCreating] = useState(false);
+  // Thông báo lỗi trùng thứ tự hiển thị
+  const [orderError, setOrderError] = useState('');
 
   useEffect(() => {
     dispatch(fetchAllCategoriesAdmin());
@@ -73,11 +75,13 @@ const AdminCategories = () => {
     setCreating(false);
     setSelectedId(c.slug || c.id || c._id);
     setForm({ ...c });
+    setOrderError('');
   };
 
   const startCreate = () => {
     setCreating(true);
     setSelectedId('');
+    setOrderError('');
     setForm({
       ...blankCategory,
       order: list.length + 1,
@@ -91,6 +95,20 @@ const AdminCategories = () => {
       showToast('Vui lòng nhập tên danh mục!');
       return;
     }
+
+    // Kiểm tra client: thứ tự hiển thị đã có danh mục khác dùng chưa
+    const targetId = form.slug || form.id || form._id || selectedId;
+    const orderClash = list.find(
+      (c) => Number(c.order) === Number(form.order) && (c.slug || c.id || c._id) !== targetId
+    );
+    if (orderClash) {
+      setOrderError(
+        `Thứ tự ${form.order} đã được dùng bởi danh mục "${orderClash.name}". Vui lòng chọn số khác!`
+      );
+      showToast(`Trùng thứ tự với danh mục "${orderClash.name}"!`);
+      return;
+    }
+    setOrderError('');
 
     if (creating) {
       const slug = form.slug || form.name.toLowerCase().replace(/\s+/g, '-');
@@ -106,17 +124,21 @@ const AdminCategories = () => {
         setSelectedId(res.payload.slug || res.payload.id || res.payload._id);
         setForm(res.payload);
       } else {
-        showToast('Lỗi khi thêm danh mục!');
+        // Hiển thị thông báo trùng thứ tự từ backend nếu có
+        const msg = typeof res.payload === 'string' ? res.payload : 'Lỗi khi thêm danh mục!';
+        setOrderError(msg.includes('Thứ tự') ? msg : '');
+        showToast(msg);
       }
       return;
     }
 
-    const targetId = form.slug || form.id || form._id || selectedId;
     const res = await dispatch(updateCategory({ id: targetId, data: form }));
     if (updateCategory.fulfilled.match(res)) {
       showToast(`Đã lưu danh mục "${form.name}"!`);
     } else {
-      showToast('Lỗi khi cập nhật danh mục!');
+      const msg = typeof res.payload === 'string' ? res.payload : 'Lỗi khi cập nhật danh mục!';
+      setOrderError(msg.includes('Thứ tự') ? msg : '');
+      showToast(msg);
     }
   };
 
@@ -241,7 +263,23 @@ const AdminCategories = () => {
             </div>
             <div>
               <FieldLabel>Thứ tự hiển thị</FieldLabel>
-              <Input type="number" value={form.order} onChange={(e) => setField('order', Number(e.target.value))} />
+              <Input
+                type="number"
+                value={form.order}
+                onChange={(e) => {
+                  setField('order', Number(e.target.value));
+                  if (orderError) setOrderError('');
+                }}
+                className={orderError ? 'border-[#e06666] focus:border-[#e06666]' : ''}
+              />
+              {orderError && (
+                <div className="mt-1.5 flex items-start gap-1.5 text-[12px] text-[#b91c1c]">
+                  <svg className="w-4 h-4 shrink-0 mt-px" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                  <span>{orderError}</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between py-2">
               <span className="text-[13px] text-nep-ink">Hiển thị trên cửa hàng</span>

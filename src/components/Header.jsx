@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { IconMenu, IconX } from './Icons';
 
 const Header = () => {
-  const { totalItems, showToast } = useCart();
+  const { cartCount, showToast, myOrders } = useCart();
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -147,14 +147,23 @@ const Header = () => {
                         </Link>
                       ) : (
                         <Link
-                          to="/cart"
+                          to="/my-orders"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center justify-between px-2.5 py-2 rounded-xl text-nep-ink hover:bg-nep-cream transition-colors text-[12px]"
                         >
-                          <span>Giỏ hàng của tôi</span>
-                          <span className="text-nep-green font-medium">({totalItems})</span>
+                          <span>Đơn hàng của tôi</span>
+                          <span className="text-nep-green font-medium">({myOrders.length})</span>
                         </Link>
                       )}
+
+                      <Link
+                        to="/cart"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center justify-between px-2.5 py-2 rounded-xl text-nep-ink hover:bg-nep-cream transition-colors text-[12px]"
+                      >
+                        <span>Giỏ hàng của tôi</span>
+                        <span className="text-nep-green font-medium">({cartCount})</span>
+                      </Link>
 
                       <button
                         type="button"
@@ -198,7 +207,7 @@ const Header = () => {
 
           <Link to="/cart" className="flex items-center gap-[5px]" aria-label="Giỏ hàng">
             <img src="/assets/bag.svg" alt="" width={20} height={20} />
-            <span className="text-[12px] font-medium text-nep-green">{totalItems}</span>
+            <span className="text-[12px] font-medium text-nep-green">{cartCount}</span>
           </Link>
 
           <button
@@ -256,6 +265,15 @@ const Header = () => {
                     className="block text-center py-2 rounded-xl bg-nep-green text-nep-cream text-[13px] font-medium"
                   >
                     Vào trang Quản trị Admin
+                  </Link>
+                )}
+                {!isAdmin && (
+                  <Link
+                    to="/my-orders"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-center py-2 rounded-xl border border-nep-line text-nep-ink text-[13px] font-medium bg-white"
+                  >
+                    Đơn hàng của tôi ({myOrders.length})
                   </Link>
                 )}
                 <button

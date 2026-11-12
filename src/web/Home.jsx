@@ -23,21 +23,20 @@ const Home = () => {
   }, [dispatch]);
 
   const featured = productList.slice(0, 4);
-  const sample = productList[0] || {
-    id: 'nem-chua-truyen-thong',
-    name: 'Nem chua truyền thống',
-    defaultSpices: { garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' },
-  };
+  // Lấy sản phẩm thật từ backend để minh họa chọn gia vị — không dùng dữ liệu mẫu
+  const sample = productList[0] || null;
 
   const [demoSpices, setDemoSpices] = useState({ garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' });
   const [openFaq, setOpenFaq] = useState(0);
 
   const displayCategories = categoryList.length > 0
-    ? categoryList.map((cat, idx) => ({
-        name: cat.name,
-        to: `/products?category=${cat.slug || cat.id}`,
-        active: idx === 0,
-      }))
+    ? categoryList
+        .filter((cat) => (cat.slug || cat.id) !== 'all')
+        .map((cat, idx) => ({
+          name: cat.name,
+          to: `/products?category=${cat.slug || cat.id}`,
+          active: idx === 0,
+        }))
     : [
         { name: 'Nem truyền thống', to: '/products?category=nem-truyen-thong', active: true },
         { name: 'Nem hương lá', to: '/products?category=nem-huong-la' },
@@ -197,21 +196,24 @@ const Home = () => {
           </p>
           <button
             type="button"
-            onClick={() => openSpiceModal(sample)}
-            className="inline-flex items-center justify-center min-h-12 px-[22px] rounded-lg bg-nep-rose border border-nep-rose text-white text-[14px] font-semibold"
+            onClick={() => sample && openSpiceModal(sample)}
+            disabled={!sample}
+            className="inline-flex items-center justify-center min-h-12 px-[22px] rounded-lg bg-nep-rose border border-nep-rose text-white text-[14px] font-semibold disabled:opacity-50"
           >
             Chọn vị của bạn →
           </button>
         </div>
-        <div className="bg-nep-cream text-nep-ink w-full lg:w-[430px] rounded-xl p-6 space-y-[18px]">
-          <p className="font-serif font-semibold text-[23px] text-nep-green">{sample.name}</p>
-          <div className="space-y-3">
-            <SpiceChoice label="Tỏi" value={demoSpices.garlic} onChange={(v) => setDemoSpices((s) => ({ ...s, garlic: v }))} />
-            <SpiceChoice label="Ớt" value={demoSpices.chili} onChange={(v) => setDemoSpices((s) => ({ ...s, chili: v }))} />
-            <SpiceChoice label="Đinh lăng" value={demoSpices.polyscias} onChange={(v) => setDemoSpices((s) => ({ ...s, polyscias: v }))} />
+        {sample && (
+          <div className="bg-nep-cream text-nep-ink w-full lg:w-[430px] rounded-xl p-6 space-y-[18px]">
+            <p className="font-serif font-semibold text-[23px] text-nep-green">{sample.name}</p>
+            <div className="space-y-3">
+              <SpiceChoice label="Tỏi" value={demoSpices.garlic} onChange={(v) => setDemoSpices((s) => ({ ...s, garlic: v }))} />
+              <SpiceChoice label="Ớt" value={demoSpices.chili} onChange={(v) => setDemoSpices((s) => ({ ...s, chili: v }))} />
+              <SpiceChoice label="Đinh lăng" value={demoSpices.polyscias} onChange={(v) => setDemoSpices((s) => ({ ...s, polyscias: v }))} />
+            </div>
+            <p className="text-[11px] leading-[1.6] text-nep-muted">Tùy chọn mẫu · Mỗi loại chỉ có hai mức Ít / Nhiều.</p>
           </div>
-          <p className="text-[11px] leading-[1.6] text-nep-muted">Tùy chọn mẫu · Mỗi loại chỉ có hai mức Ít / Nhiều.</p>
-        </div>
+        )}
       </section>
 
       <section className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-center p-4 sm:p-8 lg:p-[72px]">

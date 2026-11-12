@@ -191,13 +191,13 @@ const Cart = () => {
                                   {sub.name} · {sub.qtyText}
                                 </p>
                                 <p className="text-[#4d594d] text-[12px]">
-                                  Tỏi: {sub.spices.garlic} · Ớt: {sub.spices.chili} · Đinh lăng: {sub.spices.polyscias}
+                                  Tỏi: {sub.spices?.garlic || 'Nhiều'} · Ớt: {sub.spices?.chili || 'Ít'} · Đinh lăng: {sub.spices?.polyscias || 'Nhiều'}
                                 </p>
-                                
+
                                 {!isEditingThisSub ? (
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenEditSpice(item.cartItemId, sub.spices, sIdx)}
+                                    onClick={() => handleOpenEditSpice(item.cartItemId, sub.spices || { garlic: 'Nhiều', chili: 'Ít', polyscias: 'Nhiều' }, sIdx)}
                                     className="text-[11px] text-[#7a8072] hover:text-[#22382a] underline cursor-pointer block pt-0.5"
                                   >
                                     Chỉnh gia vị món này

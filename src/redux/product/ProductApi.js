@@ -116,3 +116,28 @@ export const deleteProduct = createAsyncThunk(
   }
 );
 
+// Tải ảnh sản phẩm lên server (Admin) — trả về URL công khai của ảnh
+// Lưu ý: không đặt Content-Type thủ công, trình duyệt tự gắn multipart/form-data kèm boundary
+export const uploadProductImage = createAsyncThunk(
+  'products/uploadProductImage',
+  async (file, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const token = localStorage.getItem('nep_token');
+      const res = await fetch(`${getBaseUrl()}/api/uploads`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.url) {
+        return data.url;
+      }
+      return rejectWithValue(data.message || 'Tải ảnh thất bại');
+    } catch (err) {
+      return rejectWithValue('Lỗi kết nối khi tải ảnh');
+    }
+  }
+);
+

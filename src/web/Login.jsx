@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -14,6 +14,13 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successInfo, setSuccessInfo] = useState(null);
+
+  // Người dùng chuyển từ trang Đăng ký với email đã tồn tại — tự điền sẵn email
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const prefillEmail = searchParams.get('email');
+    if (prefillEmail) setEmail(prefillEmail);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Xử lý gửi form đăng nhập
   const handleSubmit = async (e) => {
@@ -33,16 +40,10 @@ const Login = () => {
     const res = await login(email, password);
     if (res.success) {
       const role = res.user.role;
-      const destination = role === 'admin' ? '/admin' : '/home';
-      const roleTitle = role === 'admin' ? 'Quản trị viên (Admin)' : 'Khách hàng (User)';
 
-      setSuccessInfo({
-        roleTitle,
-        destination,
-        message: `Đăng nhập thành công! Vai trò: ${roleTitle}. Đang chuyển hướng...`,
-      });
+      setSuccessInfo('Đăng nhập thành công! Đang chuyển hướng...');
 
-      showToast(`Đăng nhập thành công (${roleTitle})!`);
+      showToast('Đăng nhập thành công!');
 
       setTimeout(() => {
         if (role === 'admin') {
@@ -73,7 +74,7 @@ const Login = () => {
             Đăng nhập tài khoản
           </h2>
           <p className="mt-1 text-[13px] text-nep-muted">
-            Hệ thống phân quyền tự động theo vai trò của tài khoản
+            Đăng nhập để mua nem, đặt combo và theo dõi đơn hàng của bạn
           </p>
         </div>
 
@@ -95,7 +96,7 @@ const Login = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
               </svg>
-              <span>{successInfo.message}</span>
+              <span>{successInfo}</span>
             </div>
           )}
 
@@ -139,23 +140,23 @@ const Login = () => {
                 />
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-nep-muted hover:text-nep-ink text-[12px]"
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-nep-muted hover:text-nep-ink transition-colors"
                 >
-                  {showPassword ? 'Ẩn' : 'Hiện'}
+                  {showPassword ? (
+                    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6cA10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6c-.598 0-1.18.057-1.743.164" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
                 </button>
-              </div>
-            </div>
-
-            {/* Note about role redirect */}
-            <div className="p-3 rounded-xl bg-nep-cream/60 border border-nep-line/60 text-[12px] text-nep-muted space-y-1">
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-nep-green"></span>
-                <span><strong>Role = Admin:</strong> Tự động chuyển tới <code>/admin</code></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-nep-rose"></span>
-                <span><strong>Role = User:</strong> Tự động chuyển tới <code>/home</code></span>
               </div>
             </div>
 

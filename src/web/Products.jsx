@@ -39,11 +39,17 @@ const Products = () => {
       { id: 'combo', name: 'Combo & quà tặng' },
     ];
     if (categories.length > 0) {
-      return [
+      // Gộp danh mục thật từ backend, loại bỏ id trùng lặp và giữ "Tất cả" đứng đầu
+      const merged = [
         { id: 'all', name: 'Tất cả' },
         ...categories.map((c) => ({ id: c.slug || c.id, name: c.name })),
-        { id: 'combo', name: 'Combo & quà tặng' },
       ];
+      const seen = new Set();
+      return merged.filter((c) => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
     }
     return defaultList;
   }, [categories]);

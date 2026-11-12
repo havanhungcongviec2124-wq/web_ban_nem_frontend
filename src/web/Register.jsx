@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { getBaseUrl } from '../utils/baseURL';
 
 const Register = () => {
   const { register, isLoading } = useAuth();
@@ -14,25 +15,51 @@ const Register = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'user', // 'user' hoặc 'admin'
   });
 
   const [errorMsg, setErrorMsg] = useState('');
-  const [successInfo, setSuccessInfo] = useState(null);
+  const [successInfo, setSuccessInfo] = useState('');
+  // Cảnh báo "email đã tồn tại" kiểm tra trực tiếp từ backend khi rời ô Email
+  const [emailExists, setEmailExists] = useState(false);
+  const [emailChecking, setEmailChecking] = useState(false);
+  // Icon con mắt: hiện/ẩn mật khẩu cho từng ô riêng biệt
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'email') {
+      // Người dùng sửa email lại — xoá cảnh báo cũ để kiểm tra lại
+      setEmailExists(false);
+    }
   };
 
-  const handleRoleSelect = (selectedRole) => {
-    setFormData((prev) => ({ ...prev, role: selectedRole }));
+  // Kiểm tra email đã có tài khoản chưa (gọi backend khi rời ô Email)
+  const handleEmailBlur = async () => {
+    const email = formData.email.trim();
+    if (!email) return;
+    setEmailChecking(true);
+    try {
+      const res = await fetch(`${getBaseUrl()}/api/auth/check-email?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data.success) {
+        setEmailExists(Boolean(data.exists));
+        if (data.exists) {
+          setErrorMsg('');
+        }
+      }
+    } catch {
+      // Không chặn luồng đăng ký nếu không kiểm tra được — submit sẽ vẫn báo lỗi từ backend
+    } finally {
+      setEmailChecking(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-    setSuccessInfo(null);
+    setSuccessInfo('');
 
     // Validation
     if (!formData.name.trim()) {
@@ -51,37 +78,41 @@ const Register = () => {
       setErrorMsg('Xác nhận mật khẩu không trùng khớp!');
       return;
     }
+    // Backend đã cảnh báo email tồn tại ngay khi gõ — chặn luôn, không gửi request thừa
+    if (emailExists) {
+      setErrorMsg('Tài khoản với email này đã tồn tại! Vui lòng đăng nhập hoặc dùng email khác.');
+      return;
+    }
 
     const res = await register({
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
       password: formData.password,
-      role: formData.role,
     });
 
     if (res.success) {
-      const isRoleAdmin = formData.role === 'admin';
-      const roleTitle = isRoleAdmin ? 'Quản trị viên (Admin)' : 'Khách hàng (User)';
-      const targetPath = isRoleAdmin ? '/admin' : '/home';
+      setSuccessInfo('Đăng ký thành công! Đang tự động chuyển hướng đến trang chủ...');
 
-      setSuccessInfo({
-        roleTitle,
-        targetPath,
-        message: `Đăng ký thành công! Vai trò: ${roleTitle}. Đang tự động chuyển hướng đến ${targetPath}...`,
-      });
-
-      showToast(`Đăng ký thành công tài khoản ${roleTitle}!`);
+      showToast('Đăng ký thành công tài khoản khách hàng!');
 
       setTimeout(() => {
-        if (isRoleAdmin) {
-          navigate('/admin');
-        } else {
-          navigate('/home');
-        }
+        navigate('/home');
       }, 900);
     } else {
-      setErrorMsg(res.message || 'Đăng ký không thành công. Vui lòng thử lại!');
+      const backendMsg = res.message || '';
+      const isDuplicate =
+        backendMsg.includes('đã được đăng ký') ||
+        backendMsg.includes('đã tồn tại') ||
+        backendMsg.includes('already registered');
+
+      if (isDuplicate) {
+        // Tài khoản đã tồn tại — hiện thông báo riêng kèm đường dẫn đăng nhập
+        setEmailExists(true);
+        setErrorMsg('Tài khoản với email này đã tồn tại! Vui lòng đăng nhập hoặc dùng email khác.');
+      } else {
+        setErrorMsg(backendMsg || 'Đăng ký không thành công. Vui lòng thử lại!');
+      }
     }
   };
 
@@ -100,7 +131,7 @@ const Register = () => {
             Đăng ký tài khoản mới
           </h2>
           <p className="mt-1 text-[13px] text-nep-muted">
-            Chọn vai trò phù hợp: Admin đi tới trang Quản trị, Khách hàng đi tới Trang chủ
+            Tạo tài khoản khách hàng để mua nem, đặt combo và theo dõi đơn hàng
           </p>
         </div>
 
@@ -108,11 +139,40 @@ const Register = () => {
         <div className="bg-white rounded-2xl border border-nep-line p-6 sm:p-8 shadow-xs">
           {/* Notification Banners */}
           {errorMsg && (
-            <div className="mb-5 p-3.5 rounded-xl bg-[#fff0f0] border border-[#f5c6c6] text-[#b91c1c] text-[13px] flex items-center gap-2">
-              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div
+              className={`mb-5 p-3.5 rounded-xl text-[13px] flex items-start gap-2 ${
+                emailExists
+                  ? 'bg-[#fff7ed] border border-[#fdba74] text-[#9a3412]'
+                  : 'bg-[#fff0f0] border border-[#f5c6c6] text-[#b91c1c]'
+              }`}
+            >
+              <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{errorMsg}</span>
+              <div className="flex-1 space-y-2">
+                <span>{errorMsg}</span>
+                {emailExists && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Link
+                      to={`/login?email=${encodeURIComponent(formData.email.trim())}`}
+                      className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg bg-nep-green text-nep-cream text-[12px] font-semibold hover:bg-[#203223] transition-colors"
+                    >
+                      Đăng nhập ngay →
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmailExists(false);
+                        setErrorMsg('');
+                        setFormData((prev) => ({ ...prev, email: '' }));
+                      }}
+                      className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg border border-nep-line text-nep-ink text-[12px] font-medium hover:bg-nep-cream transition-colors"
+                    >
+                      Dùng email khác
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -122,73 +182,11 @@ const Register = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
               </svg>
-              <span>{successInfo.message}</span>
+              <span>{successInfo}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Lựa chọn vai trò (Role Selector) */}
-            <div>
-              <label className="block text-[13px] font-medium text-nep-ink mb-2">
-                Chọn vai trò tài khoản <span className="text-nep-rose">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleRoleSelect('user')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    formData.role === 'user'
-                      ? 'border-nep-rose bg-[#fff7f5] ring-1 ring-nep-rose'
-                      : 'border-nep-line bg-white hover:bg-nep-cream/40'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-nep-ink flex items-center gap-1.5">
-                      <span>👤</span> Khách hàng
-                    </span>
-                    {formData.role === 'user' && (
-                      <span className="w-4 h-4 rounded-full bg-nep-rose text-white text-[10px] flex items-center justify-center font-bold">
-                        ✓
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-nep-muted mt-1 leading-snug">
-                    Mua nem, đặt combo, xem giỏ hàng
-                  </p>
-                  <p className="text-[10px] text-nep-rose font-medium mt-1">
-                    → Đích đến: Trang chủ (/home)
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleRoleSelect('admin')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    formData.role === 'admin'
-                      ? 'border-nep-green bg-[#eef3e8] ring-1 ring-nep-green'
-                      : 'border-nep-line bg-white hover:bg-nep-cream/40'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-nep-ink flex items-center gap-1.5">
-                      <span>🛡️</span> Quản trị viên
-                    </span>
-                    {formData.role === 'admin' && (
-                      <span className="w-4 h-4 rounded-full bg-nep-green text-white text-[10px] flex items-center justify-center font-bold">
-                        ✓
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-nep-muted mt-1 leading-snug">
-                    Quản lý đơn hàng, cấu hình combo
-                  </p>
-                  <p className="text-[10px] text-nep-green font-medium mt-1">
-                    → Đích đến: Quản trị (/admin)
-                  </p>
-                </button>
-              </div>
-            </div>
-
             {/* Họ và tên */}
             <div>
               <label className="block text-[13px] font-medium text-nep-ink mb-1.5">
@@ -216,10 +214,40 @@ const Register = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={handleEmailBlur}
                   placeholder="name@example.com"
                   required
-                  className="w-full h-11 px-3.5 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
+                  className={`w-full h-11 px-3.5 rounded-xl border bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none transition-colors ${
+                    emailExists
+                      ? 'border-[#fdba74] focus:border-[#fdba74]'
+                      : 'border-nep-line focus:border-nep-green'
+                  }`}
                 />
+                {/* Trạng thái kiểm tra email trực tiếp */}
+                {emailChecking && (
+                  <p className="mt-1.5 text-[11px] text-nep-muted flex items-center gap-1.5">
+                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Đang kiểm tra email...
+                  </p>
+                )}
+                {!emailChecking && emailExists && (
+                  <div className="mt-1.5 p-2 rounded-lg bg-[#fff7ed] border border-[#fdba74]/60 text-[11px] leading-relaxed text-[#9a3412]">
+                    <p className="font-semibold">Email này đã có tài khoản!</p>
+                    <p>
+                      Bạn có thể{' '}
+                      <Link
+                        to={`/login?email=${encodeURIComponent(formData.email.trim())}`}
+                        className="font-semibold text-nep-green underline underline-offset-2"
+                      >
+                        đăng nhập ngay
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -243,30 +271,77 @@ const Register = () => {
                 <label className="block text-[13px] font-medium text-nep-ink mb-1.5">
                   Mật khẩu <span className="text-nep-rose">*</span>
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Tối thiểu 4 ký tự"
-                  required
-                  className="w-full h-11 px-3.5 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Tối thiểu 4 ký tự"
+                    required
+                    className="w-full h-11 px-3.5 pr-11 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-nep-muted hover:text-nep-ink transition-colors"
+                  >
+                    {/* Icon con mắt — mắt gạch chéo khi đang ẩn */}
+                    {showPassword ? (
+                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6cA10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6c-.598 0-1.18.057-1.743.164" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block text-[13px] font-medium text-nep-ink mb-1.5">
                   Xác nhận mật khẩu <span className="text-nep-rose">*</span>
                 </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Nhập lại mật khẩu"
-                  required
-                  className="w-full h-11 px-3.5 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Nhập lại mật khẩu"
+                    required
+                    className="w-full h-11 px-3.5 pr-11 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-nep-muted hover:text-nep-ink transition-colors"
+                  >
+                    {showConfirmPassword ? (
+                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6cA10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6c-.598 0-1.18.057-1.743.164" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                {/* Gợi ý khớp mật khẩu khi đã hiện rõ */}
+                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                  <p className="mt-1.5 text-[11px] text-nep-rose">Mật khẩu xác nhận chưa trùng khớp!</p>
+                )}
               </div>
             </div>
 

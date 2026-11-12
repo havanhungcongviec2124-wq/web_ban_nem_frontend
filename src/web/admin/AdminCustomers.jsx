@@ -32,7 +32,7 @@ const AdminCustomers = () => {
           name: u.name,
           phone: u.phone || 'Chưa cập nhật',
           email: u.email,
-          address: u.address || 'Hà Nội',
+          address: u.address || 'Chưa cập nhật',
           returning: userOrders.length > 1,
           orderCount: userOrders.length,
           spent: totalSpent,
@@ -46,23 +46,8 @@ const AdminCustomers = () => {
       });
     }
 
-    return [
-      {
-        id: 'KH_ADMIN',
-        name: 'Quản trị viên Nếp Nem',
-        phone: '0988 888 888',
-        email: 'admin@nepnem.vn',
-        address: 'Hà Nội',
-        returning: true,
-        orderCount: orders.length,
-        spent: orders.reduce((s, o) => s + (o.totalAmount || 0), 0),
-        lastOrderTotal: orders[0]?.totalAmount || 0,
-        lastOrderStatus: orders[0]?.status || 'Hoàn tất',
-        lastOrderAt: 'Hôm nay',
-        since: '2026',
-        note: 'Tài khoản hệ thống',
-      },
-    ];
+    // Chưa tải được dữ liệu người dùng từ backend → danh sách rỗng, không dùng dữ liệu mẫu
+    return [];
   }, [rawUsers, orders]);
 
   useEffect(() => {
@@ -138,6 +123,13 @@ const AdminCustomers = () => {
                       <td className="px-5 py-3.5">{c.lastOrderAt}</td>
                     </tr>
                   ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-5 py-8 text-center text-nep-muted">
+                        Chưa có khách hàng nào trong hệ thống.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
