@@ -29,7 +29,7 @@ const Login = () => {
     setSuccessInfo(null);
 
     if (!email.trim()) {
-      setErrorMsg('Vui lòng nhập Email hoặc Tên tài khoản!');
+      setErrorMsg('Vui lòng nhập Email hoặc số điện thoại!');
       return;
     }
     if (!password.trim()) {
@@ -55,7 +55,7 @@ const Login = () => {
         }
       }, 700);
     } else {
-      setErrorMsg(res.message || 'Email hoặc mật khẩu không chính xác!');
+      setErrorMsg(res.message || 'Email/Số điện thoại hoặc mật khẩu không chính xác!');
     }
   };
 
@@ -103,13 +103,13 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[13px] font-medium text-nep-ink mb-1.5">
-                Email hoặc Tên tài khoản
+                Email hoặc số điện thoại
               </label>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Nhập email tài khoản của bạn"
+                placeholder="Nhập email hoặc số điện thoại"
                 required
                 className="w-full h-11 px-3.5 rounded-xl border border-nep-line bg-white text-[14px] text-nep-ink placeholder:text-nep-muted focus:outline-none focus:border-nep-green transition-colors"
               />
