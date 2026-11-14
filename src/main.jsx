@@ -7,9 +7,11 @@ import store from './redux/store';
 import router from './routers/router';
 import { disablePageZoom } from './utils/disablePageZoom';
 import { blockDevtools } from './utils/blockDevtools';
+import { devtoolsGuard } from './utils/devtoolsGuard';
 
 disablePageZoom();
 blockDevtools();
+devtoolsGuard();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

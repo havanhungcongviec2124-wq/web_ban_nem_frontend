@@ -16,33 +16,38 @@ export const blockDevtools = () => {
   };
 
   // Chuột phải (menu ngữ cảnh có "Xem nguồn trang" / "Inspect")
-  document.addEventListener('contextmenu', stop, true);
+  const onContextMenu = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    return false;
+  };
+  document.addEventListener('contextmenu', onContextMenu, true);
+  window.addEventListener('contextmenu', onContextMenu, true);
 
   // Phím tắt mở devtools / xem mã nguồn.
   // Dùng cả Ctrl (Windows/Linux) và Cmd (macOS) để chặn trên mọi hệ điều hành.
-  document.addEventListener(
-    'keydown',
-    (event) => {
-      const key = String(event.key || '').toLowerCase();
+  const onKeyDown = (event) => {
+    const key = String(event.key || '').toLowerCase();
 
-      // F12
-      if (key === 'f12') return stop(event);
+    // F12, phím menu ngữ cảnh, Shift + F10
+    if (key === 'f12' || key === 'contextmenu' || key === 'apps') return stop(event);
+    if (event.shiftKey && key === 'f10') return stop(event);
 
-      const mod = event.ctrlKey || event.metaKey;
-      if (!mod) return true;
+    const mod = event.ctrlKey || event.metaKey;
+    if (!mod) return true;
 
-      // Ctrl/Cmd + Shift + I / J / C / K  và  Cmd + Option + I / J / C / K
-      if ((event.shiftKey || event.altKey) && ['i', 'j', 'c', 'k'].includes(key)) {
-        return stop(event);
-      }
+    // Ctrl/Cmd + Shift + I / J / C / K  và  Cmd + Option + I / J / C / K
+    if ((event.shiftKey || event.altKey) && ['i', 'j', 'c', 'k'].includes(key)) {
+      return stop(event);
+    }
 
-      // Ctrl/Cmd + U (xem mã nguồn) và Ctrl/Cmd + S (lưu trang)
-      if (['u', 's'].includes(key)) return stop(event);
+    // Ctrl/Cmd + U (xem mã nguồn) và Ctrl/Cmd + S (lưu trang)
+    if (['u', 's'].includes(key)) return stop(event);
 
-      return true;
-    },
-    true
-  );
+    return true;
+  };
+  document.addEventListener('keydown', onKeyDown, true);
+  window.addEventListener('keydown', onKeyDown, true);
 
   // Kéo thả tệp vào trang có thể mở nội dung tệp — không cần cho trang bán hàng.
   document.addEventListener('dragover', (event) => event.preventDefault(), true);
