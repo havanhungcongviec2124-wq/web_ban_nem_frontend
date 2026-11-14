@@ -43,6 +43,8 @@ export const fetchOrders = createAsyncThunk(
   'orders/fetchOrders',
   async (params = {}, { rejectWithValue }) => {
     try {
+      // Không gọi API bảo vệ khi chưa có phiên đăng nhập (tránh request lỗi thừa)
+      if (!localStorage.getItem('nep_token')) return [];
       const query = new URLSearchParams(params).toString();
       const res = await fetch(`${BASE_URL}${query ? `?${query}` : ''}`, {
         headers: getAuthHeaders(),
@@ -63,6 +65,7 @@ export const fetchMyOrders = createAsyncThunk(
   'orders/fetchMyOrders',
   async (_, { rejectWithValue }) => {
     try {
+      if (!localStorage.getItem('nep_token')) return [];
       const res = await fetch(`${BASE_URL}/my-orders`, {
         headers: getAuthHeaders(),
       });

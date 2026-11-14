@@ -75,7 +75,6 @@ export const getMe = createAsyncThunk(
       if (data.success && data.user) {
         return {
           user: {
-            id: data.user._id,
             name: data.user.name,
             email: data.user.email,
             phone: data.user.phone || '',
@@ -97,6 +96,7 @@ export const fetchUsers = createAsyncThunk(
   'auth/fetchUsers',
   async (_, { rejectWithValue }) => {
     try {
+      if (!localStorage.getItem('nep_token')) return [];
       const res = await fetch(`${BASE_URL}/users`, {
         headers: getAuthHeaders(),
       });

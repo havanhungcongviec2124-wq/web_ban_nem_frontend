@@ -30,7 +30,7 @@ export const getProducts = async (params = {}) => {
     }
     return [];
   } catch (err) {
-    console.error('Lỗi tải sản phẩm:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải sản phẩm:', err);
     return [];
   }
 };
@@ -44,7 +44,7 @@ export const getProductByIdOrSlug = async (idOrSlug) => {
     }
     return null;
   } catch (err) {
-    console.error('Lỗi tải chi tiết sản phẩm:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải chi tiết sản phẩm:', err);
     return null;
   }
 };
@@ -89,7 +89,7 @@ export const getCombos = async () => {
     }
     return [];
   } catch (err) {
-    console.error('Lỗi tải combo:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải combo:', err);
     return [];
   }
 };
@@ -107,7 +107,7 @@ export const getComboByIdOrSlug = async (idOrSlug) => {
     }
     return null;
   } catch (err) {
-    console.error('Lỗi tải chi tiết combo:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải chi tiết combo:', err);
     return null;
   }
 };
@@ -151,7 +151,7 @@ export const getCategories = async () => {
     }
     return [];
   } catch (err) {
-    console.error('Lỗi tải danh mục:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải danh mục:', err);
     return [];
   }
 };
@@ -172,7 +172,7 @@ export const getOrders = async (params = {}) => {
     }
     return [];
   } catch (err) {
-    console.error('Lỗi tải đơn hàng:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải đơn hàng:', err);
     return [];
   }
 };
@@ -207,7 +207,7 @@ export const getUsers = async () => {
     }
     return [];
   } catch (err) {
-    console.error('Lỗi tải danh sách người dùng:', err);
+    if (import.meta.env.DEV) console.error('Lỗi tải danh sách người dùng:', err);
     return [];
   }
 };

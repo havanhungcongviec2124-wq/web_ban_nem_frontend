@@ -22,13 +22,13 @@ const AdminCustomers = () => {
     if (rawUsers && rawUsers.length > 0) {
       return rawUsers.map((u, idx) => {
         const userOrders = orders.filter(
-          (o) => (o.userId && o.userId === u._id) || (o.email && o.email === u.email) || (o.phone && o.phone === u.phone)
+          (o) => (o.email && o.email === u.email) || (o.phone && o.phone === u.phone)
         );
         const totalSpent = userOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
         const lastOrder = userOrders[0];
 
         return {
-          id: u._id || `KH_${idx}`,
+          id: u.email || u.phone || `KH_${idx}`,
           name: u.name,
           phone: u.phone || 'Chưa cập nhật',
           email: u.email,
@@ -143,7 +143,7 @@ const AdminCustomers = () => {
           <Card className="p-5 h-fit">
             <p className="font-serif text-[22px] text-nep-ink">{selected.name}</p>
             <p className="mt-1 text-[12px] text-nep-muted">
-              {selected.returning ? 'Khách quay lại' : 'Khách mới'} · {selected.id}
+              {selected.returning ? 'Khách quay lại' : 'Khách mới'}
             </p>
             <p className="mt-1 text-[12px] text-nep-muted">Tham gia từ {selected.since}</p>
 

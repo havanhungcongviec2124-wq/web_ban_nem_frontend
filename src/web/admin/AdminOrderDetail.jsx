@@ -190,9 +190,6 @@ const AdminOrderDetail = () => {
             <p className="mt-1 text-[13px] text-nep-green">{order.phone}</p>
             {order.email && <p className="mt-1 text-[13px] text-nep-muted">{order.email}</p>}
             <p className="mt-3 text-[13px] text-nep-ink">{order.address}</p>
-            {order.customerId && (
-              <p className="mt-3 text-[12px] text-nep-muted">Khách quay lại · {order.customerId}</p>
-            )}
           </Card>
 
           {order.note && (

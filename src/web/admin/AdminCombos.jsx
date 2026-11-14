@@ -327,7 +327,7 @@ const AdminCombos = () => {
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-nep-line">
               <p className="font-medium text-[15px] text-nep-ink truncate">Chỉnh sửa · {currentDisplay.name}</p>
               <span className="text-[11px] text-nep-muted bg-stone-100 px-2 py-0.5 rounded">
-                ID: {currentDisplay.slug || currentDisplay.id}
+                Mã: {currentDisplay.slug || currentDisplay.id}
               </span>
             </div>
             <div className="space-y-3.5">

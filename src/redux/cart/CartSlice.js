@@ -38,7 +38,7 @@ const saveCartToStorage = (cart) => {
   try {
     localStorage.setItem('zs_cart', JSON.stringify(cart));
   } catch (e) {
-    console.error('Lỗi lưu giỏ hàng vào storage:', e);
+    if (import.meta.env.DEV) console.error('Lỗi lưu giỏ hàng vào storage:', e);
   }
 };
 
