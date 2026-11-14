@@ -30,6 +30,17 @@
   .animate-scale-in {
     animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+  @keyframes zaloPing {
+    0% { transform: scale(1); opacity: 0.5; }
+    70% { transform: scale(1.55); opacity: 0; }
+    100% { transform: scale(1.55); opacity: 0; }
+  }
+  .animate-zalo-ping {
+    animation: zaloPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-zalo-ping { animation: none; opacity: 0; }
+  }
 }
 
 body {

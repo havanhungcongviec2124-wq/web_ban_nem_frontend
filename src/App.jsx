@@ -5,6 +5,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { CartProvider, useCart } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import SpiceModal from './components/SpiceModal';
+import ZaloButton from './components/ZaloButton';
 import { IconCheck } from './components/Icons';
 
 const ToastNotification = () => {
@@ -12,7 +13,7 @@ const ToastNotification = () => {
   if (!toastMessage) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-24 right-5 sm:right-6 z-50">
       <div className="bg-nep-ink text-nep-cream px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm">
         <span className="w-6 h-6 rounded-full bg-nep-green text-white flex items-center justify-center">
           <IconCheck className="w-4 h-4" />
@@ -46,6 +47,7 @@ const MainLayout = () => {
       <Foodter />
       <SpiceModal />
       <ToastNotification />
+      <ZaloButton />
     </div>
   );
 };
