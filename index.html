@@ -9,6 +9,10 @@
     <script>
       // Chặn chuột phải / phím tắt xem mã nguồn ngay từ đầu, trước khi bundle JS tải xong.
       (function () {
+        // Link cũ dạng /#/products -> /products (chạy trước khi router khởi tạo)
+        if (location.hash.indexOf('#/') === 0) {
+          history.replaceState(null, '', location.hash.slice(1));
+        }
         var stop = function (e) { e.preventDefault(); e.stopPropagation(); return false; };
         document.addEventListener('contextmenu', stop, true);
         document.addEventListener('keydown', function (e) {

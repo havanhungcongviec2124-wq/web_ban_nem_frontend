@@ -1,4 +1,4 @@
-import { createHashRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import App from "../App";
 import Home from "../web/Home";
 import Products from "../web/Products";
@@ -22,7 +22,7 @@ import AdminCombos from "../web/admin/AdminCombos";
 import AdminCategories from "../web/admin/AdminCategories";
 import AdminCustomers from "../web/admin/AdminCustomers";
 
-const router = createHashRouter([
+const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
